@@ -1,1 +1,428 @@
+@name Amazon Echo
 
+#memory: vol - only
+@persist Stream_radius Vol Last_Vol
+#memory: stream - only
+@persist [Song_Url Song_Name]:string Song_I
+#memory: pos - only
+@persist Local_pos:vector Entity_has_Pos:entity Follow
+#memory: library - only
+@persist Channal_Name:string Total_Number_of_songs
+@outputs Sting_Names:string Sting_Names_array:array
+
+#Information
+@persist Woke Think Lock E:entity Read_out_I
+@model models/sprops/cylinders/size_3/cylinder_6x12.mdl
+#[
+#-----------------------------------------#
+#welcome to amazon echo expression 2 code-#
+#-----------------------------------------#
+#information
+    1) I / other (list below) helped program this amazon echo.
+    2) amazon echo is made to make peoples lives easer is why not do it in expression 2 too.
+    
+    3) this expression 2 chip use several addons.
+        3.1) Expression 2
+            3.1.1) link : https://steamcommunity.com/sharedfiles/filedetails/?id=323792126&searchtext=expression+2
+            
+        3.2) [E2] StreamCore
+            3.2.1) link: https://steamcommunity.com/sharedfiles/filedetails/?id=442653157
+            
+        3.3) enable holo in Expression 2 
+        
+        3.4) dropbox a cloud service
+            3.4) link : https://www.dropbox.com/
+        
+        3.5) SProps Workshop Edition
+            3.5) link : https://steamcommunity.com/sharedfiles/filedetails/?id=173482196
+            
+    4) the players how help make this e2
+        4.1) FoxMayham
+            4.1.1) Link to Github page : https://github.com/foxmayham000/Master_E2
+            4.1.2) link to dropbox library : https://www.dropbox.com/sh/h3b1fkhiy1x1295/AACkKRSpvxBzhgtyZIOtGcIoa?dl=0
+        4.2) happy dark potato or daft for short   
+            4.2.1) link daft server : http://darksweb.us.to/
+#--------------------------#
+]#
+if(first()|dupefinished()){
+
+
+    ###################################################
+    ######### SETTINGS
+    ###################################################
+    
+        E=entity()               #this is the entity that alexa is going to be streaming from and
+                                 #where the alexa, model will be spawning to
+        
+        Disable_reander=1        #this disables reandering of the alexa model
+                                 #set to one to disable it but anything else well not
+        
+        Vol=0.5                  #this allows you set the volume
+                                 #set this between 0.01 - 1
+    
+        Stream_radius=120         #this allows you set the radius of you stream
+                                 #set this between 0 - 120
+    
+        Startup_say="alexa is here, what do you want?" #set this string to have alexa say
+                                                        #something when starting up
+    
+        SCALE=1                 #I suggest keeping this one but hey its there just in case
+
+        Total_Number_of_songs=65                 #I suggest keeping this the same 
+                                                 #this is the number index for the library
+        
+        
+        runOnChat(1)            #this allows the alexa to update avery time someone speak
+                                #don't change this enless you want your alexa to do nothing
+     
+    ###################################################
+    ######### ALEXA COMMANDS
+    ###################################################
+         
+        #alexa, 
+            #saying alexa, will allow to to chat to alexa
+        
+        #alexa, play
+            #play a song form url (only works with dropbox)
+            
+        #alexa, Genre (Genre name)
+            #plays a song form a genre
+                #example: pop , piano , drum&bass , chillwave , remixed , anima , techno , FoE , Rock
+            
+        #alexa, last song
+            #plays the last song played
+            
+        #alexa, last library
+            #plays last song for the library
+            
+        #alexa, read library
+            #convert the library's names into a string (high ops don't use)
+            
+        #alexa, stop
+            #stop all current process
+            
+        #alexa, help
+            #alexa well say some stuff
+
+        #alexa, vol
+            #changes the volume of stream core
+            
+        #alexa, radius
+            #changes the radius of stream core
+            
+        #alexa, library
+            #plays a roumd some for the library
+
+        #alexa, song (index)
+            #play a song from library and form a index
+    ###################################################
+    ###################################################
+    ###################################################
+         
+    if(Disable_reander==0){
+        function create_holo(Holo_Num:number,Holo_Model:string,Holo_Material:string,Holo_Pos:vector,Holo_Ang:angle,Holo_Color:vector,Scale:vector,Body:entity,Parent_to:entity) {
+            holoCreate(Holo_Num,Body:toWorld(Holo_Pos*SCALE),Scale*SCALE,Body:toWorld(Holo_Ang),Holo_Color)
+            holoModel(Holo_Num,Holo_Model)
+            holoMaterial(Holo_Num,Holo_Material)
+            holoShadow(Holo_Num,0)
+            holoParent(Holo_Num,Parent_to)
+        }
+        E:setMaterial("Models/effects/vol_light001")
+        E:setAlpha(1)
+        create_holo(19,"models/holograms/hq_tube_thin.mdl","sprops/textures/sprops_cfiber1",vec(0,0,2.3),ang(0,0,0),vec(220),vec(0.45,0.45,0.57),E,E)
+        create_holo(20,"models/sprops/cylinders/size_3/cylinder_6x3.mdl","WTP/metal_6",vec(0,0,-2.6),ang(0,0,0),vec(50),vec(0.9,0.9,1),E,E)
+        create_holo(21,"models/sprops/cylinders/size_3/cylinder_6x3.mdl","WTP/metal_6",vec(0,0,-2.6),ang(0,0,0),vec(50),vec(-0.9,-0.9,-1),E,E)
+        create_holo(22,"models/holograms/hq_tube_thin.mdl","sprops/textures/sprops_cfiber1",vec(0,0,-5),ang(0,0,0),vec(200),vec(0.45,0.45,0.15),E,E)
+        #object
+        create_holo(23,"models/sprops/cylinders/size_3/cylinder_6x3.mdl","sprops/textures/sprops_rubber2",vec(0,0,5.75),ang(0,0,0),vec(255),vec(0.8,0.8,0.1),E,E) 
+        create_holo(24,"models/beer/wiremod/hydraulic.mdl","",vec(0,0,5.5),ang(180,0,0),vec(255),vec(0.58,0.58,0.5),E,holoEntity(23))  
+        create_holo(25,"models/bull/dynamicbuttonflat.mdl","",vec(0,0,3),ang(0,0,0),vec(255),vec(0.75,0.75,3),E,E)  
+        create_holo(26,"models/sprops/cylinders/size_3/cylinder_6x3.mdl","sprops/textures/sprops_rubber2",vec(0,0,-6.06),ang(0,0,0),vec(255),vec(0.9,0.9,0.1),E,E)   
+        create_holo(27,"models/holograms/hq_torus.mdl","sprops/textures/sprops_rubber2",vec(0,0,-6.2),ang(),vec(255),vec(0.44,0.44,0.2),E,E)
+        create_holo(28,"models/holograms/hq_cylinder.mdl","sprops/textures/sprops_rubber2",vec(0,0,0),ang(),vec(255),vec(0.44,0.44,0.2),E,E)
+        for(I=0,15){
+            create_holo(I,"models/holograms/hq_torus.mdl","WTP/metal_2",vec(0,0,5.7),ang(0,I*22.5,0),vec(0),vec(0.45,0.45,0.3),E,holoEntity(23))
+            holoDisableShading(I,1)
+        }
+        for(Holo_Num=0,15){
+            holoClip(Holo_Num,1,vec(0,1.3,0),vec(0,8,0),0)
+            holoClipEnabled(Holo_Num,1,1)
+            holoClip(Holo_Num,2,vec(1.3,0,0),vec(8,0,0),0)
+            holoClipEnabled(Holo_Num,2,1)
+        }
+    }
+    function talk(V,Text_1:string){
+        streamStop(1)   
+        entity():streamStart(1,"https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q="+Text_1)
+    }
+    function update_name(Vol:number,Song:string,Channal_Name:string){
+        if(Vol>1){Vol=Vol/Vol}
+        setName(
+        "Amazon Echo" +  
+        "\n Volume : "  + Vol   + "%" +
+        "\n Channal : " +  Channal_Name +
+        "\n Streaming : " +  Song
+        )
+    }
+    function find_to_easter_egg(Ls:string,Lp:entity){
+        switch (Ls){   
+            default, break
+            
+            case "alexa, this is sad play despacito",
+                Song_Url="https://www.dropbox.com/s/b1s1s0ji97yrt5u/Luis%20Fonsi%20-%20Despacito%20ft.%20Daddy%20Yankee.mp3?dl=1"
+                update_name(Vol,"this is sad play, Despacito","Url Loaded")
+                timer("stream",100)                    
+            break
+            
+            case "alexa, inconceivable", talk(1,"You keep using that word. I do not think it means what you think it means.") break
+            
+            case "alexa, jump",
+                    Think=4 
+                    entity():propFreeze(0)  
+                    entity():applyForce(vec(0,0,10000))
+                    timer("stop_Animation",10000)  
+            break
+            case "alexa, who sails on the seas",
+                talk(1,"we do caption. we sails on the seas")
+                Song_Url="https://www.dropbox.com/s/6prpmwd7nevlyj9/1700s%20Sea%20shanties%2010%20minutes.mp3?dl=1"
+                timer("stream",100) 
+            break  
+            case "alexa, im never gonna give you up",
+                talk(1,"i would never give you up too")
+                Song_Url="https://www.dropbox.com/s/hsuw549ojqsa4aa/Rick-Astley-Never-Gonna-Give-You-Up.mp3?dl=1"
+                timer("stream",100) 
+            break   
+            case "alexa, im gonna give you up",
+                talk(1,"i would give you up too if you talk like that")
+                Song_Url="https://www.dropbox.com/s/j403llbxwq9gum8/rick%20assbutt%20-%20never%20gonna%20hit%20those%20notes%20%5Bskrlx%20%28monstercet%29%5D.mp3?dl=1"
+                timer("stream",100) 
+            break     
+            case "alexa, what is zero divided by zero/divide by zero",
+                talk(1,"Imagine that you have zero cookies and you split them evenly among zero friends. How many cookies does each person get?. See? It doesnt make sense. And Cookie Monster is sad that there are no cookies. And you are sad that you have no friends.")
+            break      
+            case "alexa, eat my ass",
+                talk(1,"hold on im going to eat something. be right back")
+            break
+        }
+    } 
+    
+    function string find_to_library(Song:number,Genres:string){
+        Channal_Name = "library music"
+        if(Song==0&Genres==""){
+            I=round(random(1,Total_Number_of_songs))
+            talk(1,"Playing from library. song index"+I)
+        }else{
+            I=Song
+        }
+        if(Genres!=""){
+            switch (Genres){
+                default, break
+                case "pop",         Id="pop"        Max=1  break
+                case "piano",       Id="piano"      Max=2  break
+                case "drum&bass",   Id="drum&bass"  Max=11 break
+                case "chillwave",   Id="chillwave"  Max=16 break
+                case "remixed",     Id="remixed"    Max=1  break
+                case "anima",       Id="anima"      Max=15 break
+                case "techno",      Id="techno"     Max=3  break
+                case "FoE",         Id="FoE"        Max=5  break
+                case "Rock",        Id="Rock"       Max=2  break
+            }
+            Channal_Name=Genres
+            Ir=round(random(1,Max))
+            talk(1,"Playing genre named "+Genres+". song index"+Ir)
+        }
+        if(I==1 |Id=="drum&bass"&Ir==1 ){ Name="Calm of the Sky"          Found="https://www.dropbox.com/s/wpjq2gmfah8831i/Age%20Of%20Vinyl%20%20Hay%20Tea%20-%20Calm%20of%20the%20Sky%20%5BDrum%20%20Bass%5D.mp3?dl=1" }
+        if(I==2 |Id=="pop"      &Ir==1 ){ Name="Alone"                    Found="https://www.dropbox.com/s/u8qcal1whc3p3ir/Alan%20Walker%20-%20Alone.mp3?dl=1" }
+        if(I==3 |Id=="pop"      &Ir==2 ){ Name="The Spectre"              Found="https://www.dropbox.com/s/kp96cnsw7flf9c1/Alan%20Walker%20-%20The%20Spectre.mp3?dl=1" }
+        if(I==4 |Id=="drum&bass"&Ir==2 ){ Name="Wasted Your Time"         Found="https://www.dropbox.com/s/2jldf9y97otoqe7/ALfiux%20-%20Wasted%20Your%20Time%20%5BFuture%20Garage%5D.mp3?dl=1" }
+        if(I==5 |Id=="drum&bass"&Ir==3 ){ Name="Our Escape"               Found="https://www.dropbox.com/s/t49di2onnptgtub/Anki%20-%20Our%20Escape%20%28Lyrics%29%20feat.%20Mouse.mp3?dl=1" }
+        if(I==6 |Id=="remixed"  &Ir==1 ){ Name="Boo Hoo"                  Found="https://www.dropbox.com/s/7o3pteam7zu2bl9/Assertive%20Fluttershy%20-%20Boo%20Hoo%20%5BRemastered%5D.mp3?dl=1" }
+        if(I==7 |Id=="drum&bass"&Ir==4 ){ Name="Cherax Destructor"        Found="https://www.dropbox.com/s/0b8jbsnu2mgzc7d/Cherax%20Destructor%20-%20%CE%9D%CF%8D%CE%BE%20%5BChillwave%5D.mp3?dl=1" }
+        if(I==8 |Id=="chillwave"&Ir==1 ){ Name="You Are Truth"            Found="https://www.dropbox.com/s/rhywcfhradzecg2/ChillstepAnima%20-%20You%20Are%20Truth.mp3?dl=1" }
+        if(I==9 |Id=="chillwave"&Ir==2 ){ Name="First and Foremost"       Found="https://www.dropbox.com/s/sze3jxfn7kywwim/DJT%20-%20First%20and%20Foremost%20%5BChillout%5D.mp3?dl=1" }
+        if(I==10|Id=="drum&bass"&Ir==5 ){ Name="Defiant"                  Found="https://www.dropbox.com/s/hjd2r0xq29c38fd/Feint%20-%20Defiant%20%28feat.%20Laura%20Brehm%29.mp3?dl=1" }
+        if(I==11|Id=="anima"    &Ir==1 ){ Name="Tree Hugger Meditation"   Found="https://www.dropbox.com/s/s5njdk3wkc6vx1u/Flyghtning%20-%20Tree%20Hugger%20Meditation%20%5BAmbientChillout%5D.mp3?dl=1" }
+        if(I==12|Id=="chillwave"&Ir==3 ){ Name="Unsung"                   Found="https://www.dropbox.com/s/kvlrk173n2tgfsj/Frozen%20Night%20-%20Unsung.mp3?dl=1" }
+        if(I==13|Id=="anima"    &Ir==2 ){ Name="All You Need To Know"     Found="https://www.dropbox.com/s/gvlp2yvgv1hkvtq/Gryffin%20%20Slander%20-%20All%20You%20Need%20To%20Know%20%28Lyrics%29%20ft.%20Calle%20Lehmann.mp3?dl=1" }
+        if(I==14|Id=="anima"    &Ir==3 ){ Name="Fractures"                Found="https://www.dropbox.com/s/ol5w8u8d8pwabx8/Illenium%20-%20Fractures%20%28feat.%20Nevve%29.mp3?dl=1" }
+        if(I==15|Id=="chillwave"&Ir==4 ){ Name="Leaving"                  Found="https://www.dropbox.com/s/lf4pnm8xhmea64w/Illenium%20-%20Leaving.mp3?dl=1" }
+        if(I==16|Id=="anima"    &Ir==4 ){ Name="Tower Light Fireworks"    Found="https://www.dropbox.com/s/2n4zygi4lk8stb0/iMeiden%20ft.%20Rachie%20-%20Tower%20Light%20Fireworks%20%28Kimii%20Remix%29%20.mp3?dl=1" }
+        if(I==17|Id=="anima"    &Ir==5 ){ Name="Follow The Signs"         Found="https://www.dropbox.com/s/3dh0095q40npbcp/Laura%20Brehm%20%20Draper%20-%20Follow%20The%20Signs%20%28lyrics%29.mp3?dl=1" }
+        if(I==18|Id=="pop"      &Ir==3 ){ Name="Where Have You Gone"      Found="https://www.dropbox.com/s/i9ejhw4dj05xja4/Lucas%20%20Steve%20-%20Where%20Have%20You%20Gone%20%28Anywhere%29.mp3?dl=1" }
+        if(I==19|Id=="anima"    &Ir==6 ){ Name="Beings"                   Found="https://www.dropbox.com/s/cnd71oyzqybct1z/Madeon%20-%20Beings%20%28Shelter%20Live%20Edit%29.mp3?dl=1" }
+        if(I==20|Id=="chillwave"&Ir==5 ){ Name="Azure"                    Found="https://www.dropbox.com/s/cy8q0vw5z2ygw8y/Nevermourn%20-%20Azure%20%5BFuture%20Garage%5D.mp3?dl=1" }
+        if(I==21|Id=="anima"    &Ir==7 ){ Name="This Town"                Found="https://www.dropbox.com/s/kiiwx3qxvxe2p7q/Nightcore%20%20This%20Town%20%28by%20Kygo%29%20_Lyrics.mp3?dl=1" }
+        if(I==22|Id=="anima"    &Ir==8 ){ Name="Gravity"                  Found="https://www.dropbox.com/s/mwduegmmp0n1pui/Nightstep%20-%20Gravity.mp3?dl=1" }
+        if(I==23|Id=="anima"    &Ir==9 ){ Name="Goodbye To A World"       Found="https://www.dropbox.com/s/a1ui9nrkn4javgy/Porter%20Robinson%20-%20Goodbye%20To%20A%20World%20%28Audio%29.mp3?dl=1" }
+        if(I==24|Id=="chillwave"&Ir==6 ){ Name="pastel dreams"            Found="https://www.dropbox.com/s/f29optt0lm2xp57/raindrops%20w%20namii%20%28original%20mix%29%20%20pastel%20dreams%20EP.mp3?dl=1" }
+        if(I==25|Id=="chillwave"&Ir==7 ){ Name="The End For Us"           Found="https://www.dropbox.com/s/hlhkh84art06vcp/Redd%20Pony%20-%20The%20End%20For%20Us%20%5BChillout%5D.mp3?dl=1" }
+        if(I==26|Id=="chillwave"&Ir==8 ){ Name="The Temple of Life"       Found="https://www.dropbox.com/s/pl81q47j3apwqu3/Resonant%20Waves%20-%20The%20Temple%20of%20Life%20ft.%20CaptainFluffatun%20%5BAmbient%5D.mp3?dl=1" }
+        if(I==27|Id=="drum&bass"&Ir==6 ){ Name="Drifting Away"            Found="https://www.dropbox.com/s/mkczj0ldge57amj/Risen%20-%20Drifting%20Away%20%28VIP%29%20%5BLiquidMinimal%20Drum%20%20Bass%5D.mp3?dl=1" }
+        if(I==28|Id=="chillwave"&Ir==9 ){ Name="Starlight Sanctuary"      Found="https://www.dropbox.com/s/46v7bymn3xoeyow/RoomVR%20%20Zephysonas%20-%20Starlight%20Sanctuary%20%5BAmbientOrchestral%5D.mp3?dl=1" }
+        if(I==29|Id=="anima"    &Ir==10){ Name="Loving You"               Found="https://www.dropbox.com/s/yxwiq05qwtcq8bg/Spagbo%20-%20Loving%20You%20.mp3?dl=1" }
+        if(I==30|Id=="pop"      &Ir==4 ){ Name="Monody"                   Found="https://www.dropbox.com/s/yuvo5ol401q17sd/TheFatRat%20-%20Monody%20%28feat.%20Laura%20Brehm%29%20%28Orchestral%20Remix%20by%20sJLs%29%20%28Lyrics%20Video%29.mp3?dl=1" }
+        if(I==31|Id=="chillwave"&Ir==10){ Name="what Once Was"            Found="https://www.dropbox.com/s/4hmfpu3ps3hhwbi/Totalspark%20-%20What%20Once%20Was%20%28feat.%20Synthis%29%20%5BChillout%5D.mp3?dl=1" }
+        if(I==32|Id=="pop"      &Ir==5 ){ Name="Nevada"                   Found="https://www.dropbox.com/s/uloeemzdwt9paoz/Vicetone%20-%20Nevada%20%28ft.%20Cozi%20Zuehlsdorff%29.mp3?dl=1" }
+        if(I==33|Id=="chillwave"&Ir==11){ Name="Dont Let Them"            Found="https://www.dropbox.com/s/vop1h9ncwcd7nwv/Young%20Bombs%20-%20Dont%20Let%20Them%20%28Lyrics%29.mp3?dl=1" }
+        if(I==35|Id=="chillwave"&Ir==12){ Name="Homeward"                 Found="https://www.dropbox.com/s/rhllhi208utwuij/Animation%20%20Music%20Homeward.mp3?dl=1" }
+        if(I==36|Id=="pop"      &Ir==6 ){ Name="Lone Digger"              Found="https://www.dropbox.com/s/nizvp04d3hitov7/Caravan%20Palace%20-%20Lone%20Digger.mp3?dl=1" }
+        if(I==37|Id=="Rock"     &Ir==1 ){ Name="Am I In Control"          Found="https://www.dropbox.com/s/ul4qvlg4fhrvub2/Flittzy%20-%20Am%20I%20In%20Control%20%5BPop%20Rock%5D.mp3?dl=1" }
+        if(I==38|Id=="drum&bass"&Ir==7 ){ Name="Finally"                  Found="https://www.dropbox.com/s/5awq2x88tqotcq3/Hay%20Tea%20-%20Finally%20%28French%20House%29.mp3?dl=1" }
+        if(I==39|Id=="drum&bass"&Ir==8 ){ Name="I Want Your Love"         Found="https://www.dropbox.com/s/t89s6p1k8f4az6l/Hay%20Tea%20-%20I%20Want%20Your%20Love%20%28French%20House%29.mp3?dl=1" }
+        if(I==40|Id=="piano"    &Ir==1 ){ Name="Hopes and Dreams"         Found="https://www.dropbox.com/s/owzqybeyr7cxspv/Hopes%20and%20Dreams%20Orchestrated.mp3?dl=1" }
+        if(I==41|Id=="drum&bass"&Ir==9 ){ Name="Into The Wasteland"       Found="https://www.dropbox.com/s/6cgo9zepaf8ltge/Into%20The%20Wasteland%20%28Drum%20%20Bass%29.mp3?dl=1" }
+        if(I==42|Id=="drum&bass"&Ir==10){ Name="FlutterBound"             Found="https://www.dropbox.com/s/8rbl1u0gu01ybtz/Jastrian%20-%20FlutterBound.mp3?dl=1" }
+        if(I==43|Id=="chillwave"&Ir==13){ Name="Lost On The Moon"         Found="https://www.dropbox.com/s/xd5hse1qnapb7eo/Lost%20On%20The%20Moon%20feat.%20Rina%20Chan%20%5BWoodenToaster%20%20The%20Living%20Tombstone%5D.mp3?dl=1" }
+        if(I==44|Id=="FoE"      &Ir==1 ){ Name="Where Is Your Heaven now" Found="https://www.dropbox.com/s/sxa1nxl6qkht5vt/Midnight%20Musician%20-%20Where%20Is%20Your%20Heaven%20Now.mp3?dl=1" }
+        if(I==45|Id=="piano"    &Ir==2 ){ Name="Didactic"                 Found="https://www.dropbox.com/s/ek9o55bq2hv135p/Morgsch%20-%20Didactic%20%5BJazzPiano%5D.mp3?dl=1" }
+        if(I==46|Id=="drum&bass"&Ir==11){ Name="Musicbox"                 Found="https://www.dropbox.com/s/dxih9it7o0cxkhb/Musicbox%20%28Hip%20Hop%20Instrumental%29.mp3?dl=1" }
+        if(I==47|Id=="chillwave"&Ir==14){ Name="MusicSquare One"          Found="https://www.dropbox.com/s/x57nwu5ry88uped/MusicSquare%20One%20%28ft.%20Slyleaf%20%20FlyoverRob%29.mp3?dl=1" }
+        if(I==48|Id=="Rock"     &Ir==2 ){ Name="Liftoff"                  Found="https://www.dropbox.com/s/8snou5r3xmhod46/Plum%20Creek%20Rhythm%20Section%20-%20Liftoff%20%5BPop%20Rock%5D.mp3?dl=1" }
+        if(I==49|Id=="FoE"      &Ir==2 ){ Name="Set Me Free"              Found="https://www.dropbox.com/s/izky2jonp9pztmp/Set%20Me%20Free%20%28Fallout%20Day%20Special%29.mp3?dl=1" }
+        if(I==50|Id=="chillwave"&Ir==15){ Name="Nebula"                   Found="https://www.dropbox.com/s/y7y48gv2rzfpm3k/Spectra%20-%20Nebula%20%28NeverlastStanding%20Remix%29%20%5BMelodic%20Drum%20%20Bass%5D.mp3?dl=1" }
+        if(I==51|Id=="FoE"      &Ir==3 ){ Name="Broken wing"              Found="https://www.dropbox.com/s/veh2f6v47qsevm0/The%20Wasteland%20Wailers%20%20Broken%20Wing%20Recital%20%28feat.%20Brittany%20Church%29.mp3?dl=1" }
+        if(I==52|Id=="FoE"      &Ir==4 ){ Name="Dare Master"              Found="https://www.dropbox.com/s/zb48puk4w3ps2gv/The%20Wasteland%20Wailers%20%20Dare%20Master.mp3?dl=1" }
+        if(I==53|Id=="FoE"      &Ir==5 ){ Name="Haymake"                  Found="https://www.dropbox.com/s/dwpzruvnatz6a81/The%20Wasteland%20Wailers%20%20Im%20in%20Love%20%28feat.%20Haymaker%29%20%5BPonies%20at%20Dawn%3B%20Guardians%5D.mp3?dl=1" }
+        if(I==54|Id=="anima"    &Ir==11){ Name="RWBY "                    Found="https://www.dropbox.com/s/4740rxvmwbes6sg/This%20Will%20Be%20The%20Day%20from%20RWBY%20A%20Cappella%20cover%20%28Inspired%20by%20Pentatonix%29.mp3?dl=1" }
+        if(I==55|Id=="chillwave"&Ir==16){ Name="Train Bells"              Found="https://www.dropbox.com/s/96lw4gzn1gsm60q/Wandering%20Artist%20-%20Train%20Bells%20%5BAmbientOrchestral%5D.mp3?dl=1" }
+        if(I==56|Id=="anima"    &Ir==12){ Name="Fly Like You"             Found="https://www.dropbox.com/s/6awpg7bns4vid5w/Wasteland%20Wailers%20-%20Fly%20Like%20You%20%28feat.%20Brittany%20Church%20as%20Velvet%20Remedy%29.mp3?dl=1" }
+        if(I==57|Id=="anima"    &Ir==13){ Name="Lunar Drizzle"            Found="https://www.dropbox.com/s/xd6kvjigzsh7hoq/06%E6%9C%88%E6%99%82%E9%9B%A8%20Imy.mp3?dl=1" }
+        if(I==58|Id=="anima"    &Ir==14){ Name="never gona stop"          Found="https://www.dropbox.com/s/qwndp0r1xy71u75/Fn2%20Vo%20Nu%20Ko%20-%20Never%20Gonna%20Stop.mp3?dl=1" }
+        if(I==59|Id=="techno"   &Ir==1 ){ Name="Touhou"                   Found="https://www.dropbox.com/s/c7en3fzasmeffl3/%E6%9D%B1%E6%96%B9%20Touhou%20Techno%20Trance%20240.mp3?dl=1" }
+        if(I==60|Id=="anima"    &Ir==15){ Name="unknow"                   Found="https://www.dropbox.com/s/4yws2n00lx48lv1/%E5%87%BA%E9%99%A3%20Sortie.mp3?dl=1" }
+        if(I==61|Id=="pop"      &Ir==7 ){ Name="Dancin Krono Remix"       Found="https://dl.dropboxusercontent.com/s/85xqfjiqvzbsa6v/Aaron%20Smith%20-%20Dancin%20%28Krono%20Remix%29%20-%20BassBoosted%20%2B%20Download%20_%20720p%20HD.mp3?dl=1" }
+        if(I==62|Id=="techno"   &Ir==2 ){ Name="Martin Garrix MOTI-Virus" Found="https://www.dropbox.com/s/yoazy7yms7tje7i/Martin%20Garrix%20%20MOTI%20-%20Virus%20%28How%20About%20Now%29%20%28Recharge%20Bootleg%29%20%5BHQ%20Free%5D.mp3?dl=1" }
+        if(I==63|Id=="techno"   &Ir==3 ){ Name="Major Lazer-Too Original" Found="https://www.dropbox.com/s/hmtfjhmif2qv4bm/Major%20Lazer%20-%20Too%20Original%20%28KREAM%20Remix%29.mp3?dl=1" }
+        if(I==64|Id=="techno"   &Ir==3 ){ Name="Daft Punk- Derezzed"      Found="https://www.dropbox.com/s/wv24anatxm9q902/Daft%20Punk-%20Derezzed%20%28OFFICIAL%20TRACK%29%28FULL%20SONG%29%28HQ%29%282010%29TRON%20SOUNDTRACK.mp3?dl=1" }
+        if(I==65|Id=="techno"   &Ir==4 ){ Name="trashnotrelatedtomedli"   Found="https://www.dropbox.com/s/7ekl83f8zzucuie/trash-not_related_to_medli_-.ogg?dl=1" }
+        if(I==66 |Id=="techno"  &Ir==5 ){ Name="Tokyo Drift"              Found="https://www.dropbox.com/s/qvqm2jppwpvnvq6/Tokyo%20Drift%20-%20Teriyaki%20Boyz%20%5B%20MUSIC%20VIDEO%20%5D%20HD.mp3?dl=1" }
+#       if(I==0 |Id==""         &Ir==0 ){ Name=""                         Found="" }
+        Song_I=I+Ir
+        Song_Name=Name
+        Song_Url=Found
+        update_name(Vol,Name+"(Num :"+(I+Ir)+")",Channal_Name)   
+        return Found
+    }
+    
+    talk(1,Startup_say)
+    update_name(Vol,"no song","no channal")
+}
+
+
+#--------------------------#
+#chip-updating-starts-here-#
+#--------------------------#
+interval(100)
+
+
+#chat
+if (chatClk()) {
+    
+    local Lp = lastSpoke()
+    local Ls = lastSaid()
+    Said=Lp:lastSaid():explode(" ")
+    
+    switch (Said[1,string]){
+        default, break
+        case "alexa,",
+            Think=2
+            stoptimer("Animation")
+            timer("Animation",0)
+            timer("stop_Animation",15000)    
+
+            find_to_easter_egg(Ls,Lp)
+            
+            switch (Said[2,string]){
+                default, break
+                
+                case "play"   , timer("stream",100) Song_Url=Said[3,string] update_name(Vol,"song name n/a (it's a url)","Url Loaded") break
+                case "song"   , timer("stream",100) Song_Url=find_to_library(Said[3,string]:toNumber(),"")  break
+                case "last"   , timer("stream",100) update_name(Vol,Song_Name,"") break
+                case "library", timer("stream",100) Song_Url=find_to_library(0,"")  break
+                case "Genre"  , timer("stream",100) Song_Url=find_to_library(0,Said[3,string])  break
+                case "read"   , timer("read",300)   Sting_Names="" Read_out_I=0  break 
+                                
+                case "mute"  , if(Vol!=0){ Last_Vol=Vol Vol=0 talk(1,"someone muted me and set the volume to "+Vol) }else{talk(1,"sorry can't do that the volume is already set to "+Vol) }  break 
+                case "unmute", Vol=Last_Vol  talk(1,"someone unmuted me and set the volume back to "+Vol*100)   break 
+                case "time"  , if(time("hour")>12){Hour=time("hour")-12}else{time("hour")} talk(1,"the server time is "+Hour+"hours and"+time("min")+"minute ")   break 
+                case "day"   , talk(1,"the date is "+date()[3,string]+"")   break 
+
+                case "here"  , if(Lp==owner()){ entity():setPos(owner():pos()+vec(0,0,6.3))                 } break 
+                case "there" , if(Lp==owner()){ entity():setPos(owner():eyeTrace():position()+vec(0,0,6.3)) } break
+                case "stay"  , if(Lp==owner()){ Entity_has_Pos=owner():aimEntity()  Local_pos=Entity_has_Pos:toLocal(entity():pos())  timer("stay",0) } break
+                case "!goto" , if(Lp==owner()){ entity():setPos(findPlayerByName(Said[3,string]):pos()+vec(0,0,6.3))    } break
+                case "follow", Follow=1 break 
+                
+                case "stop",
+                    switch (Said[3,string]){
+                    default, break
+                        case "stream", streamStop(2) break
+                        case "follow", stoptimer("stay") break
+                    }  
+                break
+                
+                case "vol",
+                    Vol=Said[3,string]:toNumber()/100
+                    if((Vol*100)>99){
+                        talk(1,"someone set the volume to"+Vol*100+"% and broke the volume knob off trying to turn it up more ")
+                    }else{
+                        talk(1,"someone set the volume to"+Vol*100+"%")
+                    }
+                    update_name(Vol,Song_Name,Channal_Name)
+                    streamVolume(2,Vol)
+                break
+                              
+            }
+        break
+    }
+}
+#animation
+if(clk("Animation")){ 
+    if(Lock==0){
+    if(Think==1){ for(I=0,15){ holoColor(I,vec(0,0,(sin(curtime()*255+(I*15))*255)))    } }
+    if(Think==2){ for(I=0,15){ holoColor(I,vec(0,0,(sin(curtime()*255+(I*70))*255)))    } }
+    if(Think==3){ for(I=0,15){ holoColor(I,vec(0,0,(sin(curtime()*255+(I*90))*255)))    } }
+    if(Think==4){ for(I=0,15){ holoColor(I,vec((sin(curtime()*255+(I*220))*255),0,0))   } }
+    if(Think==0){ for(I=0,15){ holoColor(I,vec(0,0,0))                                  } }
+    }else{        for(I=0,15){ holoColor(I,vec((sin(curtime()*255+(I*2))*100),0,0))     } }
+    timer("Animation",200)
+}
+#stop animation timer
+if(clk("stop_Animation")){
+    Woke=0
+    for(A=0,15){    
+        holoColor(A,vec(0,0,0))   
+    } 
+}
+#Stream timer
+if(clk("stream")){
+    if(!streamCanStart()){
+        timer("stream",100) 
+        streamStop(2) 
+    }else{
+        streamRadius(2,Stream_radius)
+        entity():streamStart(2,Vol,Song_Url)
+    }
+}
+if(Follow==1){
+    D=entity():pos():distance(owner():pos())
+    if(D>100)
+    {
+        entity():applyForce(-(entity():pos()-owner():pos())*D*0.05)
+    }else
+    {
+        entity():applyForce(-entity():vel()*10)
+    }
+}
+
+if(clk("stay")){
+    entity():setPos(Entity_has_Pos:toWorld(Local_pos))
+    timer("stay",100)
+}
+if(clk("read")){
+    Read_out_I++
+    find_to_library(Read_out_I,"")
+    Sting_Names=Sting_Names+" I:" +Read_out_I +",N:" + Song_Name
+    Sting_Names_array:pushString(" I:" +Read_out_I +",N:" + Song_Name)
+    if(Read_out_I==Total_Number_of_songs){ stoptimer("read")}else{timer("read",200) }
+}
