@@ -1,0 +1,822 @@
+@name  Blender
+
+#grid data
+@outputs [Points Links Bones]:table
+@persist [Reference Scale SnapPos]:vector [Holoselected LastHoloseleted Wire_thickness Dis OnPlane]:number Que:table ZInd
+
+#Egp data
+@inputs Egp:wirelink User:entity 
+@persist [Orange Gray Hue]:vector ButtonCooldown:number IsUsing:entity Scene_data:string ChangingHolo:table
+
+#mic data
+@persist E:entity [HoloCount NOL LockUser CpuCap]:number Building_Mode:string
+
+#model Data
+@persist [Hololinecount Holopointpount ShowPoints]:number 
+
+#Render screen
+@inputs DS:wirelink
+@persist CPU [Camera LIGHT LookAtMe]:entity [Max_Uv Current_Uv]:vector2 Colors:table LastPercent Timeleft Pos_Offset:vector Textures:table
+@persist RES Fov Percent_Done CurrPix MaxPix ColorSaturation Brightness LookPos:vector RenderColor:vector
+#[
+i need to make a holo hit box system
+xtd in the e2 helper
+you can create arbitrary shapes and trace them without checking the whole world for intersections
+adding raytracing to E2
+
+
+
+
+
+]#
+if( first() | dupefinished() )
+{
+    function wirelink:initScreen(Resolution){
+        This[1048574]=0 #Reset Screen and whatever was on it will be cleared.
+        This[1048569]=3 #Set color mode to 3
+        This[1048575]=1 #Apply changes
+        This[1048572]=Resolution #Set new resolution on Y (Height)
+        This[1048573]=Resolution #Set new resolution on X (Width)
+        This["PixelG",number] = 999
+    }
+    
+    function ranger entity:ranger_shoot(Pos_offset:vector,Max_dis,Direction:angle){ return rangerOffset(Max_dis,This:toWorld(Pos_offset),Direction:forward()) }
+    function angle vectormix(P_1:vector,P_2:vector){ return ( P_1 - P_2 ):toAngle() }
+    
+    function ranger entity:update_ranger(Distance,Pos:vector,Uv:vector2,MaxUv:vector2,Fov:number)
+    {
+        Look_direction=vectormix( Camera:toWorld(Pos) , Camera:toWorld(Pos+vec(-Fov,Uv[1],Uv[2])) )
+        return Camera:ranger_shoot(vec(),Distance, Look_direction )
+    }
+    
+    function number ispressed( Index ){
+        HitPos = Egp:egpCursor( User )
+        return inrange( HitPos , Egp:egpPos(Index) - (Egp:egpSize(Index)/2)  , Egp:egpPos(Index) + (Egp:egpSize(Index)/2) )
+    }
+    
+    function void create_holo(Holo_Num:number,Holo_Model:string,Holo_Material:string,Holo_Pos:vector,Holo_Ang:angle,Holo_Color:vector,Scale:vector,Body:entity,Parent_to:entity) 
+    {
+        holoCreate(Holo_Num,Body:toWorld(Holo_Pos),Scale,Body:toWorld(Holo_Ang),Holo_Color)
+        holoModel(Holo_Num,Holo_Model)
+        holoMaterial(Holo_Num,Holo_Material)
+        holoShadow(Holo_Num,0)
+        holoParent(Holo_Num,Parent_to)
+    }
+    
+    function void updateEGP(Pick)
+    {
+        for(I=Pick,Pick+10)
+        {
+            Egp:egpRemove(I+150)
+        }
+        Spacing = 0
+        Sum = 0
+        if( Scene_data=="points" ){ Table = Points }
+        if( Scene_data=="links"  ){ Table = Links  }
+        if( Scene_data=="Que"  ){ Table = Que  }
+        if( Scene_data=="bones"  ){ Table = Bones  }
+        for(I = Pick , Pick+10)
+        {
+            if(Scene_data=="points")
+            {
+                if(Table[I,vector]==vec())
+                {
+                    Egp:egpText(Sum+150, "-" , vec2( 188 , 30+( Sum*5 )+( Spacing*4 ) ) )
+                }
+                else
+                {
+                    Egp:egpText(Sum+150, ""+I+" Point "+Table[I,vector] , vec2( 192 , 30+( Sum*5 )+( Spacing*4 ) ) )
+                }
+            }
+            elseif(Scene_data=="links")
+            {
+                SR=Table[I,string]:explode("|")
+                if(SR:count()==2)
+                {
+                    Egp:egpText(Sum+150, ""+I+" link "+SR[1,string]+" : "+SR[2,string] , vec2( 192 , 30+( Sum*5 )+( Spacing*4 ) ) )
+                }
+                else
+                {
+                    Egp:egpText(Sum+150, "-" , vec2( 188 , 30+( Sum*5 )+( Spacing*4 ) ) )
+                }
+            }
+            elseif(Scene_data=="Que")
+            {
+                if(Table[I,number]==0)
+                {
+                    Egp:egpText(Sum+150, "-" , vec2( 188 , 30+( Sum*5 )+( Spacing*4 ) ) )
+                }
+                else
+                {
+                    Egp:egpText(Sum+150, ""+I+" Num "+Table[I,number] , vec2( 192 , 30+( Sum*5 )+( Spacing*4 ) ) )
+                }
+            }
+            elseif(Scene_data=="bones")
+            {
+                if(Table[I,number]==0)
+                {
+                    Egp:egpText(Sum+150, "-" , vec2( 188 , 30+( Sum*5 )+( Spacing*4 ) ) )
+                }
+                else
+                {
+                    Egp:egpText(Sum+150, ""+I+" Num "+Table[I,number] , vec2( 192 , 30+( Sum*5 )+( Spacing*4 ) ) )
+                }
+            }
+            Egp:egpFont(Sum+150, "roboto")
+            Egp:egpSize(Sum+150, 12)
+            if(Pick==I)
+            {
+                Egp:egpColor(Sum+150,Orange)
+            }
+            else
+            {
+                Egp:egpColor(Sum+150,Gray)
+            }
+            Sum += 1
+            Spacing += 1
+        }
+    }
+    
+    function void addHolo(HoloNum)
+    {
+        ChangingHolo:pushNumber(HoloNum)
+    } 
+    
+    function void holo_rope(Holo:number,Ratio,Pos1:vector,Pos2:vector,AngleOffSet:angle,Weight:number)
+    {
+        holoPos( Holo , mix( Pos1 , Pos2 , Ratio ) )
+        holoAng( Holo , ( Pos1 - Pos2 ):toAngle()+AngleOffSet )
+        holoScale( Holo , vec( Weight , Weight , (Pos1:distance( Pos2 ) )/(6/Ratio)) )
+    }
+    
+    function void create_rope(Index:number)
+    {
+        holoCreate(Index)
+        holoModel(Index,"")
+        holoScale(Index,vec(0))
+    }
+    
+    function void create_Text(Index:number,Text:string,Pos:vector2,Size)
+    {
+        addHolo(Index)
+        Egp:egpText(Index, Text , Pos)
+        Egp:egpFont(Index, "roboto")
+        Egp:egpSize(Index, Size)
+    }
+    
+    function vector linePlane( Ent:entity, Ply:entity ) {
+        local Normal = Ent:up()
+        return Ent:toLocal( Ply:shootPos() + ( Normal:dot( Ent:pos() - Ply:shootPos() ) / Normal:dot( Ply:eye() ) ) * Ply:eye() )
+    }
+    
+    function vector getPosFromIndex(X:number,Y:number) {
+        Vec = E:toWorld(Reference+vec( -(X*6)+(Scale:x()*3) , (Y*6)-(Scale:y()*3) ,0) )
+        if(OnPlane) {
+            return Vec
+        }
+        else {
+            return vec(0)
+        }
+    }
+
+    function number getZIndexFromPos(Pos:vector) {
+        for(Z=1,Scale:x()*2) {
+            local Start=holoEntity(0):toWorld(-Scale*3+vec((Z-1)*2.9,0,1))
+            local End=holoEntity(0):toWorld(Scale*3+vec((-Scale:x()+(Z*0.5))*6+0.24,0,-1))
+            
+            if(inrange(Pos,vec(min(Start:x(),End:x()),min(Start:y(),End:y()),min(Start:z(),End:z())),vec(max(Start:x(),End:x()),max(Start:y(),End:y()),max(Start:z(),End:z())))) {
+                ZIndex=Z
+                return Z
+            }
+        }
+        return 0
+    }
+    
+    function vector2 getIndexFromPos(Pos:vector) {
+        if(OnPlane)
+        {
+            for(X=1,Scale:x()*4)
+            {
+                local Start=holoEntity(0):toWorld(-Scale*3+vec((      X)*3,0,1))
+                local   End=holoEntity(0):toWorld( Scale*3+vec((-Scale:x()+(X))*6,0,-1))
+                
+                if(inrange(Pos,vec(min(Start:x(),End:x()),min(Start:y(),End:y()),min(Start:z(),End:z())),vec(max(Start:x(),End:x()),max(Start:y(),End:y()),max(Start:z(),End:z())))) 
+                {
+                    for(Y=1,Scale:y()*4)
+                    {
+                        local Start=holoEntity(0):toWorld(-Scale*3+vec(0,(      Y)*3,1))
+                        local   End=holoEntity(0):toWorld( Scale*3+vec(0,(-Scale:y()+(Y))*6,-1))
+                        
+                        if(inrange(Pos,vec(min(Start:x(),End:x()),min(Start:y(),End:y()),min(Start:z(),End:z())),vec(max(Start:x(),End:x()),max(Start:y(),End:y()),max(Start:z(),End:z()))))
+                        {
+                            return vec2(X,Y)
+                        }
+                    }
+                    return vec2(0)
+                }
+            }
+        }
+        else
+        {
+            return vec2(0)
+        }
+    }
+    
+    #mic data
+        E=entity()
+        NoNumHolo=1
+        Version=0.15
+        CpuCap=3500
+        Building_Mode="points"
+        setName("Blender "+Version)
+    
+    #3D Box
+        Points=table(vec(1,1,1),vec(1,-1,1),vec(-1,1,1),vec(-1,-1,1),vec(1,1,3),vec(1,-1,3),vec(-1,1,3),vec(-1,-1,3))
+        
+    #3D Box Links
+        Links=table("1|2","1|3","1|6","1|5","1|4","2|8","3|4","3|7","3|5","4|7","2|4","5|6","5|7","6|2","6|8","6|7","8|4","8|7","8|6")
+
+    #Egp data
+        LockUser=0
+        ButtonCooldown=10
+        Holoselected=0
+        Scene_data="points"
+        timer("update_colors",200)
+        timer("update_holos",0)
+        
+    #Grid data
+        NOL=15 #how big the grid is (15 is best)
+        Dis=3 #don't change
+        Wire_thickness=0.01
+        Reference = vec(0,0,0)
+        Scale = vec(NOL*Dis,NOL*Dis,0) 
+        Hololinecount=0
+        Holopointpount=0
+    
+    #Colors
+        Black=vec(25)
+        Blue=vec(0,100,200)
+        Orange=vec(200,150,0)
+        Gray=vec(150)
+        ButtonGray=vec(30)
+        
+    #Changing color
+        Hue = vec()
+        Hue[1] = 0
+        Hue[2] = 1
+        Hue[3] = 0.8
+    
+    #render data     #good Res [ 144 , 240 , 512 , 720 , 1080 , 2160 , 4320 ]
+        RES = 50
+        CPU = 500
+        Fov=70
+        ColorSaturation=50 #this is a invert pecention value
+        Brightness=0.5 #this is ratio value
+#        "gmod_wire_hologram"
+        Max_Uv=vec2(RES,RES)
+        Pos_Offset=vec(3.2,1,2.5)
+        
+        MaxPix=Max_Uv[1]*Max_Uv[2]
+
+        RenderColor=vec()
+        RenderColor[1] = 180
+        RenderColor[2] = 1
+        RenderColor[3] = 0.8   
+
+    
+    #----
+    #Egp-
+    #----
+    
+    #egp clear
+        Egp:egpClear()
+        Egp:egpScale(vec2(0,255),vec2(0,255))
+    
+    #Background
+        #[1]#
+            Egp:egpBox(NoNumHolo , vec2(255/2,255/2) , vec2( 255 , 255 ) )
+            Egp:egpColor(NoNumHolo,Black)
+        #[2]#
+            NoNumHolo+=1
+            addHolo(NoNumHolo)
+            Egp:egpBoxOutline(NoNumHolo , vec2(127.5,132.5) , vec2( 255 , 245.5 ) )
+            Egp:egpAlign(NoNumHolo,1,1)
+    #Logo
+        #[3]#
+            NoNumHolo+=1
+            Egp:egpCircle(NoNumHolo , vec2(10,5) , vec2(4,4) ) Egp:egpColor(NoNumHolo, Orange )
+        #[4]#
+            NoNumHolo+=1
+            Egp:egpCircle(NoNumHolo , vec2(10,5) , vec2(3,3) ) Egp:egpColor(NoNumHolo, Black )
+        #[5]#
+            NoNumHolo+=1
+            Egp:egpCircle(NoNumHolo , vec2(10,5) , vec2(2,2) ) Egp:egpColor(NoNumHolo, Blue )
+    
+    #lines
+        #[6]#
+            NoNumHolo+=1 addHolo(NoNumHolo) 
+            Egp:egpLine(NoNumHolo , vec2(0,18) , vec2(255,18) )
+        #[7]#
+            NoNumHolo+=1 addHolo(NoNumHolo)
+            Egp:egpLine(NoNumHolo , vec2(185,18) , vec2(185,247) )
+        #[8]#
+            NoNumHolo+=1 addHolo(NoNumHolo)
+            Egp:egpLine(NoNumHolo , vec2(185,255/2) , vec2(255,255/2) )
+        #[9]#
+            NoNumHolo+=1 addHolo(NoNumHolo)
+            Egp:egpLine(NoNumHolo , vec2(193,140) , vec2(193,247) ) 
+        #[10]#
+            NoNumHolo+=1 addHolo(NoNumHolo)
+            Egp:egpLine(NoNumHolo , vec2(0,247) , vec2(255,247) )
+        #[11]#
+            NoNumHolo+=1 addHolo(NoNumHolo)
+            Egp:egpLine(NoNumHolo , vec2(185,140) , vec2(255,140) )
+        #[12]#
+            NoNumHolo+=1 addHolo(NoNumHolo)
+            Egp:egpLine(NoNumHolo , vec2(185,27) , vec2(255,27) )
+    
+    #Buttons
+        #[13]# #reset
+            NoNumHolo+=1
+            Egp:egpBox(NoNumHolo , vec2(249,5.7) , vec2( 9 , 9 ) ) Egp:egpColor(NoNumHolo,ButtonGray)
+        #[14]# #enter user
+            NoNumHolo+=1
+            Egp:egpBox(NoNumHolo , vec2(172,5.7) , vec2( 63 , 9 ) ) Egp:egpColor(NoNumHolo,ButtonGray)
+        #[15]# #reset user
+            NoNumHolo+=1
+            Egp:egpBox(NoNumHolo , vec2(178,51) , vec2( 12 , 12 ) ) Egp:egpColor(NoNumHolo,ButtonGray)
+        #[16]# #clear model data
+            NoNumHolo+=1
+            Egp:egpBox(NoNumHolo , vec2(14,14.4) , vec2( 26 , 7 ) ) Egp:egpColor(NoNumHolo,ButtonGray)
+        #[17]# #change list table
+            NoNumHolo+=1
+            Egp:egpBox(NoNumHolo , vec2(220,23) , vec2( 68 , 8 ) ) Egp:egpColor(NoNumHolo,ButtonGray)
+        #[18]# #show points
+            NoNumHolo+=1
+            Egp:egpBox(NoNumHolo , vec2(178,38) , vec2( 12 , 12 ) ) Egp:egpColor(NoNumHolo,vec(50))
+        #[19]# #change modes
+            NoNumHolo+=1
+            Egp:egpBox(NoNumHolo , vec2(159,25) , vec2( 24 , 12 ) ) Egp:egpColor(NoNumHolo,ButtonGray)
+        #[20]# #edit
+            NoNumHolo+=1
+            Egp:egpBox(NoNumHolo , vec2(37,14.4) , vec2( 15 , 7 ) ) Egp:egpColor(NoNumHolo,ButtonGray)
+        #[21]# #render
+            NoNumHolo+=1
+            Egp:egpBox(NoNumHolo , vec2(58,14.4) , vec2( 24 , 7 ) ) Egp:egpColor(NoNumHolo,ButtonGray)
+        #[22]# #window
+            NoNumHolo+=1
+            Egp:egpBox(NoNumHolo , vec2(84,14.4) , vec2( 24 , 7 ) ) Egp:egpColor(NoNumHolo,ButtonGray)
+        #[23]# #help
+            NoNumHolo+=1
+            Egp:egpBox(NoNumHolo , vec2(107,14.4) , vec2( 18 , 7 ) ) Egp:egpColor(NoNumHolo,ButtonGray)
+        #[24]# #delet cur index in table
+            NoNumHolo+=1
+            Egp:egpBox(NoNumHolo , vec2(178,64) , vec2( 12 , 12 ) ) Egp:egpColor(NoNumHolo,ButtonGray)    
+    
+    #Text
+        NoNumHolo=100
+        #[101]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"Blender "+Version,vec2(20, 0),20)
+        #[102]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"By FoxMayham",vec2(2, 248),15)    
+        #[103]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"X",vec2(247, 1.5),15)
+        #[104]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"User[E to enter yours]",vec2(142, 1.5 ),15)
+        #[105]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"[ U ] ",vec2(173, 47),15)
+        #[106]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"Collection [ "+Scene_data+" ]",vec2(188, 19),15)
+        #[107]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"New File",vec2(2, 10.5),15)
+        #[108]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"Edit",vec2(32, 10.5),15)
+        #[109]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"Render",vec2(48, 10.5),15)
+        #[110]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"Window",vec2(73, 10.5),15)
+        #[111]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"Help",vec2(100, 10.5),15)
+        #[112]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"",vec2(173, 21),0)
+        #[113]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"[ V ]",vec2(173, 34),15)
+        #[114]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"[points]",vec2(148, 21),15)    
+        #[114]#
+            NoNumHolo+=1
+            create_Text(NoNumHolo,"[ R ]",vec2(173, 60),15)    
+    
+    updateEGP(Holoselected)
+    
+    #Grid
+        #[0]# #Base
+            create_holo(0,"","",vec(0,0,-0.2),ang(180,0,0),vec(100),vec((Dis*0.167)*NOL,(Dis*0.167)*NOL,0.001),E,E)
+            holoAlpha(0,100)
+        #[1]# #curser
+            create_holo(1,"hq_cone","",vec(0,0,-0.2),ang(180,0,0),vec(100),vec(0.1),E,E)
+            holoColor(1,Orange)
+            holoDisableShading(1,1)
+        #[2]# #X
+            create_holo(2,"","",vec(0,0,0),ang(0,0,0),vec(0,170,0),vec((Dis*0.187)*NOL,0.015,0.015),E,E)
+            holoDisableShading(2,1)
+        #[3]# #Y
+            create_holo(3,"","",vec(0,0,0),ang(0,90,0),vec(170,0,0),vec((Dis*0.187)*NOL,0.015,0.015),E,E)
+            holoDisableShading(3,1)
+        #[4]# #Camera
+            create_holo(4,"models/maxofs2d/camera.mdl","",vec((NOL*Dis),0,1*Dis),ang(0,180,0),vec(255),vec(0.5),E,E)
+            holoDisableShading(4,1)
+    
+    #data
+        HoloCount=0
+        
+        for(I=0,NOL)
+        {
+            HoloCount+=1
+            create_holo(HoloCount+5,"","",vec((I*(Dis*2))-(NOL*Dis),0,0),ang(0,0,0),vec(150),vec(Wire_thickness,(Dis*0.167)*NOL,Wire_thickness),E,E)
+        }
+        
+        for(I=0,NOL)
+        {
+            HoloCount+=1
+            create_holo(HoloCount+5,"","",vec(0,(I*(Dis*2))-(NOL*Dis),0),ang(0,0,0),vec(150),vec((Dis*0.167)*NOL,Wire_thickness,Wire_thickness),E,E)
+        }
+        
+    Camera=holoEntity(4)
+    LIGHT=entity()
+    
+    DS:initScreen(RES)
+}
+
+interval(100)
+setName(toChar(0))
+if(ButtonCooldown==0&IsUsing==User)
+{
+    IsClk=0
+    
+    #reset
+    if( ispressed(13) ){ reset() }
+
+    if( ispressed(24) & !Holoselected==0  )
+    {  
+        IsClk=1
+        if(Scene_data=="points")
+        {
+            for(I=1,500)
+            {
+                holoDelete(I+(NOL*3))
+            }
+            timer("update_holos",0)
+            Points[Holoselected,vector]=vec()
+            updateEGP(Holoselected)
+        }
+        if(Scene_data=="links")
+        {
+            for(I=1,500)
+            {
+                holoDelete(I+(NOL*3))
+            }
+            timer("update_holos",0)
+            Links[Holoselected,string]=""
+            updateEGP(Holoselected)
+        }
+    }
+    
+    
+    if(ispressed(15)&LockUser==1)
+    { 
+        IsClk=1
+        LockUser=0
+        IsUsing=E
+        Egp:egpText(104, "User[E to enter yours]" , vec2(142, 1.5 ))
+        Egp:egpFont(104, "roboto")
+        Egp:egpSize(104, 15)
+    }
+    
+    if(ispressed(16))
+    {
+        IsClk=1
+        Points=table()
+        Links=table()
+        for(I=1,500)
+        {
+            holoDelete(I+(NOL*3))
+        }
+        timer("update_holos",0)
+        updateEGP(Holoselected)
+    }
+    
+    B=ispressed(17)
+    
+    if(B==1&ButtonCooldown==0&Scene_data=="Que")
+    {
+        Holoselected=0
+        Scene_data="points"
+        Egp:egpSetText(106,"Collection [ "+Scene_data+" ]")
+        updateEGP(Holoselected)
+        IsClk=1
+    }
+    elseif(B==1&ButtonCooldown==0&Scene_data=="points")
+    {
+        Holoselected=0
+        Scene_data="links"
+        Egp:egpSetText(106,"Collection [ "+Scene_data+" ]")
+        updateEGP(Holoselected)
+        IsClk=1
+    }
+    elseif(B==1&ButtonCooldown==0&Scene_data=="links")
+    {
+        Holoselected=0
+        Scene_data="bones"
+        Egp:egpSetText(106,"Collection [ "+Scene_data+" ]")
+        updateEGP(Holoselected)
+        IsClk=1
+    }
+    elseif(B==1&ButtonCooldown==0&Scene_data=="bones")
+    {
+        Holoselected=0
+        Scene_data="Que"
+        Egp:egpSetText(106,"Collection [ "+Scene_data+" ]")
+        updateEGP(Holoselected)
+        IsClk=1
+    }
+    
+    B3=ispressed(18)
+    
+    if(B3==1&ButtonCooldown==0&ShowPoints==0)
+    {
+        for(I=1,500)
+        {
+            holoDelete(I+(NOL*3))
+        }
+        Egp:egpColor(18,vec(25))
+        timer("update_holos",100)
+        ShowPoints=1
+        updateEGP(Holoselected)
+        IsClk=1
+    }
+    elseif(B3==1&ButtonCooldown==0&ShowPoints==1)
+    {
+        for(I=1,500)
+        {
+            holoDelete(I+(NOL*3))
+        }
+        Egp:egpColor(18,vec(50))
+        timer("update_holos",100)
+        ShowPoints=0
+        updateEGP(Holoselected)
+        IsClk=1
+    }
+    
+    M1=ispressed(19)
+    
+    if(M1==1&ButtonCooldown==0&Building_Mode=="Move")
+    {
+        Building_Mode="points"
+        Egp:egpSetText(114,"["+Building_Mode+"]")
+        IsClk=1
+    }
+    elseif(M1==1&ButtonCooldown==0&Building_Mode=="points")
+    {
+        Building_Mode="links"
+        Egp:egpSetText(114,"["+Building_Mode+"]")
+        IsClk=1
+    }
+    elseif(M1==1&ButtonCooldown==0&Building_Mode=="links")
+    {
+        Building_Mode="render"
+        Egp:egpSetText(114,"["+Building_Mode+"]")
+        IsClk=1
+    }    
+    elseif(M1==1&ButtonCooldown==0&Building_Mode=="render")
+    {
+        Building_Mode="Move"
+        Egp:egpSetText(114,"["+Building_Mode+"]")
+        IsClk=1
+    }
+    
+    if(IsClk==1)
+    {
+        E:soundPlay(100,0,"buttons/blip1.wav")
+        ButtonCooldown=5
+    }
+}
+elseif(ispressed(14)&LockUser==0)
+{
+    IsUsing=User
+    LockUser=1
+    Egp:egpText(104, "User["+IsUsing:name():left(15)+"]" , vec2(142, 1.5 ))
+    Egp:egpFont(104, "roboto")
+    Egp:egpSize(104, 15)
+}
+elseif(ButtonCooldown>0)
+{
+    ButtonCooldown-=1
+}
+
+if(clk("update_holos"))
+{
+    if(Hololinecount==Links:count())
+    {
+        Holopointpount=0
+        Hololinecount=0
+        timer("update_holos",5000)
+    }
+    else
+    {
+        timer("update_holos",100)
+    }
+}
+
+if(Holopointpount<Points:count()&holoCanCreate()==1&ShowPoints==0)
+{
+    Holopointpount+=1
+    if(Points[Holopointpount,vector]!=vec())
+    {
+        create_holo(Holopointpount+(NOL*3),"","",Points[Holopointpount,vector]*Dis,ang(),vec(255),vec(0.1),E,E)
+    }
+}
+
+if(Hololinecount<Links:count()&holoCanCreate()==1&Holopointpount==Points:count()&ShowPoints==0|Hololinecount<Links:count()&holoCanCreate()==1&ShowPoints==1)
+{
+    Hololinecount+=1
+    HoloNum=Hololinecount+(NOL*3)+Points:count()
+    create_rope(HoloNum)
+    holoParent(HoloNum,E)
+    SR=Links[Hololinecount,string]:explode("|")
+    local V1=E:toWorld((Points[SR[1,string]:toNumber(),vector]*Dis))
+    local V2=E:toWorld((Points[SR[2,string]:toNumber(),vector]*Dis))
+    holo_rope(HoloNum,0.5,V1,V2,ang(90,0,0),Wire_thickness*2)
+}
+
+local B1=IsUsing:keyPressed("UP")
+local B2=IsUsing:keyPressed("Down")
+
+if(B1==1&ButtonCooldown==0&Holoselected>0|changed(B1)&B1==1&Holoselected>0&ButtonCooldown==0)
+{
+    LastHoloseleted=Holoselected
+    Holoselected=Holoselected-1
+    updateEGP(Holoselected)
+    ButtonCooldown=2
+}
+elseif(B2==1&ButtonCooldown==0|changed(B2)&B2==1&ButtonCooldown==0)
+{
+    LastHoloseleted=Holoselected
+    Holoselected=Holoselected+1
+    updateEGP(Holoselected)
+    ButtonCooldown=2
+}
+
+if(clk("update_colors"))
+{
+    Hue[1]=Hue[1]+1
+    if(Hue[1]>360){Hue[1]=0}
+    for(I=1,ChangingHolo:count())
+    {
+        Egp:egpColor(ChangingHolo[I,number],hsv2rgb(Hue))
+    }
+    Egp:egpText(102, "By FoxMayham   Ops("+round(ops())+")    Cpu("+round(cpuUsage()*1000000)+")     Holos("+holoAmount()+"/"+holoMaxAmount()+")   Verts("+Points:count()+")    Que("+Que:count()+")" , vec2(2, 248))
+    Egp:egpFont(102, "roboto")
+    Egp:egpSize(102, 15)
+    
+    timer("update_colors",500)
+}
+
+if(Building_Mode=="points"|Building_Mode=="Move")
+{
+    if(!IsUsing:keyUse()&cpuUsage()<CpuCap)
+    {
+        Intersection = linePlane(holoEntity(0),IsUsing)
+        IntersectionToWorld = holoEntity(0):toWorld(Intersection)
+        if (abs(Intersection:x()) > holoScale(0):x()*6 || abs(Intersection:y()) > holoScale(0):y()*6)
+        {
+            OnPlane=0
+            holoColor(0, vec4(255,200,200,30))
+        }
+        else
+        {
+            OnPlane=1
+            holoColor(0, vec4(200,255,200,30))
+            MainIndex = getIndexFromPos(IntersectionToWorld)
+            SnapPos = getPosFromIndex(MainIndex:x(),MainIndex:y())
+            holoPos(1,SnapPos+vec(0,0,ZInd))
+        }
+    }
+    elseif(OnPlane==0)
+    {
+        holoColor(0, vec4(255,200,200,30))
+    }
+    
+    while(perf(10) && IsUsing:keyUse() && OnPlane) {    
+        local ZPlaneInt = linePlane(holoEntity(0),IsUsing)
+        local ZPlaneIntWorld = holoEntity(0):toWorld(ZPlaneInt)
+        ZInd=round( (Scale:x())+1-getZIndexFromPos(ZPlaneIntWorld) )
+        if(ZInd==(Scale:x())){
+            ZInd=0
+        }
+        holoPos(1,SnapPos+vec(0,0,round(ZInd)))
+    }
+    
+    local R=IsUsing:keyPressed("r")
+    
+    if(changed(R)&R==1&OnPlane==1)
+    {
+        local Vec=E:toLocal(holoEntity(1):toWorld(vec(0,0,1)))
+        local X=round(Vec:x(),3)
+        local Y=round(Vec:y(),3)
+        Points[Points:count()+1,vector]=round( vec(X,Y,ZInd)/Dis )
+        updateEGP(Holoselected)
+        timer("update_holos",100)
+    }
+}
+elseif(Building_Mode=="links")
+{
+    local C=IsUsing:keyPressed("Enter")
+    local C1=IsUsing:keyPressed("Rshift")
+    if(changed(C)&C==1&!Holoselected==0&Holoselected<=Points:count())
+    {
+        E:soundPlay(100,0,"buttons/blip1.wav")
+        Que:pushNumber(Holoselected)
+        if(Que:count()==2)
+        {
+            Links[Links:count()+1,string]=Que[1,number]+"|"+Que[2,number]
+            Que:shift()
+            Que:shift()
+        }
+    }
+    if(changed(C1)&C1==1)
+    {
+        Que=table()
+    }
+    
+    if(Scene_data=="points")
+    {
+        holoPos(1,E:toWorld((Points[Holoselected,vector]*Dis)+vec(0,0,1)))
+    }
+    if(Scene_data=="links")
+    {
+        SR=Links[Holoselected,string]:explode("|")
+        P1=E:toWorld(Points[SR[1,string]:toNumber(),vector]*Dis)
+        P2=E:toWorld(Points[SR[2,string]:toNumber(),vector]*Dis)
+        P3=mix(P1,P2,0.5)
+        holoPos(1,P3+vec(0,0,1.5))
+    }
+}
+
+
+
+
+
+while( opcounter()<softQuota() & cpuUsage()<CPU*10^-6 & Building_Mode=="render" )
+{
+    if(Current_Uv[1]>=Max_Uv[1]&Current_Uv[2]>=Max_Uv[2])
+    {
+        RenderColor[1] = clamp(RenderColor[1]+50,0,360)
+        if(RenderColor[1]>=350){RenderColor[1]=0}
+        Current_Uv[1]=0
+        Current_Uv[2]=0
+    }
+    elseif(Current_Uv[1]>=Max_Uv[1]&Current_Uv[2]<=Max_Uv[2])
+    {
+        Current_Uv[1]=0
+        Current_Uv[2]=Current_Uv[2]+1
+    }
+    elseif(Current_Uv[1]<=Max_Uv[1]&Current_Uv[2]<=Max_Uv[2])
+    {
+        Current_Uv[1]=Current_Uv[1]+1
+        Current_Uv[2]=Current_Uv[2] 
+    }
+    
+    rangerHitEntities(0)
+    rangerIgnoreWorld(1)
+    rangerHitWater(1)
+    
+    local Ranger=Camera:update_ranger(100000,Pos_Offset,Current_Uv-(Max_Uv/2),Max_Uv,Fov)
+    
+    if(Ranger:hit()==1)
+    {
+        Color=(RenderColor)*Brightness
+    }
+    else
+    {
+        Color=vec(0)
+    }
+    
+    OutputColor = vec(ColorSaturation+Ranger:distance()*0.01) + Color*Ranger:hitNormal():dot(-LIGHT:forward())
+    
+    DS[(RES-Current_Uv[1])+(Current_Uv[2])*RES]= rgb2digi( clamp(OutputColor,vec(0),vec(255)) ,3)
+}
