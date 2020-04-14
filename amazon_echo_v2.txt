@@ -167,8 +167,7 @@ if( first() | dupefinished() )
     function update_name(Vol:number,Song:string,Channal_Name:string)
     {
         if(Vol>1){Vol=Vol/Vol}
-        setName
-        (
+        setName(
         "Amazon Echo" +  
         "\n Volume : "  + Vol   + "%" +
         "\n Song : " +  Channal_Name +
