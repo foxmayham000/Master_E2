@@ -1,0 +1,408 @@
+@name Amazon Echo v2
+
+#memory: vol - only
+@persist Stream_radius Vol Last_Vol
+#memory: stream - only
+@persist [Song_Url Song_Name]:string Song_I
+#memory: pos - only
+@persist Local_pos:vector Entity_has_Pos:entity Follow
+#memory: library - only
+@persist Channal_Name:string Total_Number_of_songs
+@outputs Sting_Names:string Sting_Names_array:array
+
+#Information
+@persist Woke Think Lock E:entity Read_out_I [Search URL]:string Stage Resetting
+@model models/sprops/cylinders/size_3/cylinder_6x12.mdl
+#[
+#-----------------------------------------#
+#welcome to amazon echo expression 2 code-#
+#-----------------------------------------#
+#information
+    1) I / other (list below) helped program this amazon echo.
+    2) amazon echo is made to make peoples lives easer is why not do it in expression 2 too.
+    
+    3) this expression 2 chip use several addons.
+        3.1) Expression 2
+            3.1.1) link : https://steamcommunity.com/sharedfiles/filedetails/?id=323792126&searchtext=expression+2
+            
+        3.2) [E2] StreamCore
+            3.2.1) link: https://steamcommunity.com/sharedfiles/filedetails/?id=442653157
+            
+        3.3) enable holo in Expression 2 
+        
+        3.4) dropbox a cloud service
+            3.4) link : https://www.dropbox.com/
+        
+        3.5) SProps Workshop Edition
+            3.5) link : https://steamcommunity.com/sharedfiles/filedetails/?id=173482196
+            
+    4) the players how help make this e2
+        4.1) FoxMayham
+            4.1.1) Link to Github page : https://github.com/foxmayham000/Master_E2
+            4.1.2) link to dropbox library : https://www.dropbox.com/sh/h3b1fkhiy1x1295/AACkKRSpvxBzhgtyZIOtGcIoa?dl=0
+        4.2) happy dark potato or daft for short   
+            4.2.1) link daft server : http://darksweb.us.to/
+#--------------------------#
+]#
+if( first() | dupefinished() )
+{
+    
+    ###################################################
+    ######### SETTINGS
+    ###################################################
+    
+        E=entity()               #this is the entity that alexa is going to be streaming from and
+                                 #where the alexa, model will be spawning to
+        
+        Disable_reander=0        #this disables reandering of the alexa model
+                                 #set to one to disable it but anything else well not
+        
+        Vol=0.5                  #this allows you set the volume
+                                 #set this between 0.01 - 1
+    
+        Stream_radius=120         #this allows you set the radius of you stream
+                                 #set this between 0 - 120
+    
+        Startup_say="alexa is here, what do you want?" #set this string to have alexa say
+                                                        #something when starting up
+    
+        SCALE=1                 #I suggest keeping this one but hey its there just in case
+
+        Total_Number_of_songs=65                 #I suggest keeping this the same 
+                                                 #this is the number index for the library
+        
+        
+        runOnChat(1)            #this allows the alexa to update avery time someone speak
+                                #don't change this enless you want your alexa to do nothing
+                                
+                                
+        runOnHTTP(1)            #Http alows videos to be found and converted to audio
+                                #
+                                
+    ###################################################
+    ######### ALEXA COMMANDS
+    ###################################################
+         
+        #alexa, 
+            #saying alexa, will allow to to chat to alexa
+        
+        #alexa, play
+            #play a song form url (only works with dropbox)
+            
+        #alexa, Genre (Genre name)
+            #plays a song form a genre
+                #example: pop , piano , drum&bass , chillwave , remixed , anima , techno , FoE , Rock
+        
+        #alexa, last song
+            #plays the last song played
+            
+        #alexa, last library
+            #plays last song for the library
+            
+        #alexa, read library
+            #convert the library's names into a string (high ops don't use)
+            
+        #alexa, stop
+            #stop all current process
+            
+        #alexa, help
+            #alexa well say some stuff
+
+        #alexa, vol
+            #changes the volume of stream core
+            
+        #alexa, radius
+            #changes the radius of stream core
+            
+        #alexa, library
+            #plays a roumd some for the library
+
+        #alexa, song (index)
+            #play a song from library and form a index
+    ###################################################
+    ###################################################
+    ###################################################
+         
+    if(Disable_reander==0)
+    {
+        function create_holo(Holo_Num:number,Holo_Model:string,Holo_Material:string,Holo_Pos:vector,Holo_Ang:angle,Holo_Color:vector,Scale:vector,Body:entity,Parent_to:entity)
+        {
+            holoCreate(Holo_Num,Body:toWorld(Holo_Pos*SCALE),Scale*SCALE,Body:toWorld(Holo_Ang),Holo_Color)
+            holoModel(Holo_Num,Holo_Model)
+            holoMaterial(Holo_Num,Holo_Material)
+            holoShadow(Holo_Num,0)
+            holoParent(Holo_Num,Parent_to)
+        }
+        E:setMaterial("Models/effects/vol_light001")
+        E:setAlpha(1)
+        create_holo(19,"models/holograms/hq_tube_thin.mdl","sprops/textures/sprops_cfiber1",vec(0,0,2.3),ang(0,0,0),vec(220),vec(0.45,0.45,0.57),E,E)
+        create_holo(20,"models/sprops/cylinders/size_3/cylinder_6x3.mdl","WTP/metal_6",vec(0,0,-2.6),ang(0,0,0),vec(50),vec(0.9,0.9,1),E,E)
+        create_holo(21,"models/sprops/cylinders/size_3/cylinder_6x3.mdl","WTP/metal_6",vec(0,0,-2.6),ang(0,0,0),vec(50),vec(-0.9,-0.9,-1),E,E)
+        create_holo(22,"models/holograms/hq_tube_thin.mdl","sprops/textures/sprops_cfiber1",vec(0,0,-5),ang(0,0,0),vec(200),vec(0.45,0.45,0.15),E,E)
+        #object
+        create_holo(23,"models/sprops/cylinders/size_3/cylinder_6x3.mdl","sprops/textures/sprops_rubber2",vec(0,0,5.75),ang(0,0,0),vec(255),vec(0.8,0.8,0.1),E,E) 
+        create_holo(24,"models/beer/wiremod/hydraulic.mdl","",vec(0,0,5.5),ang(180,0,0),vec(255),vec(0.58,0.58,0.5),E,holoEntity(23))  
+        create_holo(25,"models/bull/dynamicbuttonflat.mdl","",vec(0,0,3),ang(0,0,0),vec(255),vec(0.75,0.75,3),E,E)  
+        create_holo(26,"models/sprops/cylinders/size_3/cylinder_6x3.mdl","sprops/textures/sprops_rubber2",vec(0,0,-6.06),ang(0,0,0),vec(255),vec(0.9,0.9,0.1),E,E)   
+        create_holo(27,"models/holograms/hq_torus.mdl","sprops/textures/sprops_rubber2",vec(0,0,-6.2),ang(),vec(255),vec(0.44,0.44,0.2),E,E)
+        create_holo(28,"models/holograms/hq_cylinder.mdl","sprops/textures/sprops_rubber2",vec(0,0,0),ang(),vec(255),vec(0.44,0.44,0.2),E,E)
+        for(I=0,15)
+        {
+            create_holo(I,"models/holograms/hq_torus.mdl","WTP/metal_2",vec(0,0,5.7),ang(0,I*22.5,0),vec(0),vec(0.45,0.45,0.3),E,holoEntity(23))
+            holoDisableShading(I,1)
+        }
+        for(Holo_Num=0,15)
+        {
+            holoClip(Holo_Num,1,vec(0,1.3,0),vec(0,8,0),0)
+            holoClipEnabled(Holo_Num,1,1)
+            holoClip(Holo_Num,2,vec(1.3,0,0),vec(8,0,0),0)
+            holoClipEnabled(Holo_Num,2,1)
+        }
+    }
+    function talk(V,Text_1:string)
+    {
+        streamStop(1)   
+        entity():streamStart(1,"https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q="+Text_1)
+    }
+    function update_name(Vol:number,Song:string,Channal_Name:string)
+    {
+        if(Vol>1){Vol=Vol/Vol}
+        setName
+        (
+        "Amazon Echo" +  
+        "\n Volume : "  + Vol   + "%" +
+        "\n Song : " +  Channal_Name +
+        "\n Info : " +  Song
+        )
+    }
+    
+    talk(1,Startup_say)
+    update_name(Vol,"no song","no channal")
+}
+
+
+#--------------------------#
+#chip-updating-starts-here-#
+#--------------------------#
+interval(100)
+
+
+#chat
+if (chatClk())
+{
+    local Lp = lastSpoke()
+    local Ls = lastSaid()
+    Said=Lp:lastSaid():explode(" ")
+    
+    switch (Said[1,string])
+    {
+        default, break
+        case "alexa,",
+            Think=2
+            stoptimer("Animation")
+            timer("Animation",0)
+            timer("stop_Animation",15000)
+            
+            switch (Said[2,string])
+            {
+                default, break
+                
+                case "play"   , 
+                    
+                    Search = Ls:sub(12)
+                    Resetting = 2
+                    runOnTick(1)
+                    Song_Name = Search
+                    timer("stream",100) 
+                    update_name(Vol,"song name n/a (it's a url)","Url Loaded") 
+                    
+                break
+                
+                case "last"   , timer("stream",100) update_name(Vol,Song_Name,"") break
+                                
+                case "here"  , if(Lp==owner()){ entity():setPos(owner():pos()+vec(0,0,6.3))                 } break 
+                case "there" , if(Lp==owner()){ entity():setPos(owner():eyeTrace():position()+vec(0,0,6.3)) } break
+                case "stay"  , if(Lp==owner()){ Entity_has_Pos=owner():aimEntity()  Local_pos=Entity_has_Pos:toLocal(entity():pos())  timer("stay",0) } break
+                case "!goto" , if(Lp==owner()){ entity():setPos(findPlayerByName(Said[3,string]):pos()+vec(0,0,6.3))    } break
+                case "follow", Follow=1 break 
+                
+                case "stop",
+                    switch (Said[3,string])
+                    {
+                    default, break
+                        case "stream", streamStop(2) break
+                        case "follow", stoptimer("stay") break
+                    }  
+                break
+                
+                case "vol",
+                    Vol=Said[3,string]:toNumber()/100
+                    if((Vol*100)>99)
+                    {
+                        talk(1,"someone set the volume to"+Vol*100+"% and broke the volume knob off trying to turn it up more ")
+                    }
+                    else
+                    {
+                        talk(1,"someone set the volume to"+Vol*100+"%")
+                    }
+                    update_name(Vol,"",Song_Name)
+                    streamVolume(2,Vol)
+                break
+            
+            }
+        break
+    }
+}
+
+if( Resetting & ( Stage == 1 | Stage == 3 | Stage == 5 | !Stage ) )
+{
+    if(Resetting==1)
+    {
+        Stage = 0
+    }
+    else
+    {
+        Stage = 1
+        streamStop(1)
+    }
+    runOnTick(Stage)
+    Resetting = 0
+    QueueRun = 0
+    Running = 0
+}
+
+switch(Stage)
+{
+    default,break
+    case 1,
+    if(httpCanRequest())
+    {
+        update_name(Vol,"searching",Song_Name)
+        runOnTick(0)
+        httpRequest("https://www.youtube.com/results?search_query="+Search:replace(" ","+"))
+        Stage = 2
+    }
+    break
+    
+    case 2,
+    if(httpClk())
+    {
+        Data = httpData()
+        if(Data)
+        {
+            update_name(Vol,"Receive results",Song_Name)
+            Index = Data:find("data-context-item-id=")
+            if(Index)
+            {
+                Start = Index+"data-context-item-id=":length()+1
+                URL = "https://www.youtube.com/watch?v="+Data:sub(Start,Data:find("\"",Start+1)-1)
+                if(URL=="https://www.youtube.com/watch?v=wDgQdr8ZkTw"){QueueRun = 1}
+                Stage = 3
+                runOnTick(1)
+            }
+            else
+            {
+                update_name(Vol,"No results",Song_Name)
+                Stage = 0
+            }
+        }
+        else{Stage = 1}
+    }
+    break
+    
+    case 3,
+    if(httpCanRequest())
+    {
+        runOnTick(0)
+        httpRequest("http://michaelbelgium.me/ytconverter/convert.php?youtubelink="+URL)
+        Stage = 4
+    }
+    break
+    
+    case 4,
+    if(httpClk())
+    {
+        Data = httpData()
+        if(Data)
+        {
+            URL = jsonDecode(httpData())["file",string]
+            update_name(Vol,"Receive audio",Song_Name)
+            Stage = 5
+            runOnTick(1)
+        }
+        else{Stage = 3}
+    }
+    break
+    
+    case 5,
+    if(streamCanStart())
+    {
+        if( QueueRun ){ Running = 1 }
+        Song_Url = URL
+        timer("stream",100)
+        Stage = 0
+        runOnTick(0)
+    }
+    break
+}
+
+#animation
+if(clk("Animation"))
+{ 
+    if(Lock==0)
+    {
+        if(Think==1){ for(I=0,15){ holoColor(I,vec(0,0,(sin(curtime()*255+(I*15))*255)))    } }
+        if(Think==2){ for(I=0,15){ holoColor(I,vec(0,0,(sin(curtime()*255+(I*70))*255)))    } }
+        if(Think==3){ for(I=0,15){ holoColor(I,vec(0,0,(sin(curtime()*255+(I*90))*255)))    } }
+        if(Think==4){ for(I=0,15){ holoColor(I,vec((sin(curtime()*255+(I*220))*255),0,0))   } }
+        if(Think==0){ for(I=0,15){ holoColor(I,vec(0,0,0))                                  } }
+    }
+    else
+    {        
+        for(I=0,15){ holoColor(I,vec((sin(curtime()*255+(I*2))*100),0,0)) } 
+    }
+    timer("Animation",200)
+}
+
+#stop animation timer
+if(clk("stop_Animation"))
+{
+    Woke=0
+    for(A=0,15)
+    {    
+        holoColor(A,vec(0,0,0))   
+    } 
+}
+
+#Stream timer
+if(clk("stream"))
+{
+    if(!streamCanStart())
+    {
+        timer("stream",100) 
+        streamStop(2) 
+    }
+    else
+    {
+        streamRadius(2,Stream_radius)
+        entity():streamStart(2,Vol,Song_Url)
+    }
+}
+
+if(Follow==1)
+{
+    D=entity():pos():distance(owner():pos())
+    if( D > 100 )
+    {
+        entity():applyForce(-(entity():pos()-owner():pos())*D*0.05)
+    }else
+    {
+        entity():applyForce(-entity():vel()*10)
+    }
+}
+
+if(clk("stay"))
+{
+    entity():setPos(Entity_has_Pos:toWorld(Local_pos))
+    timer("stay",100)
+}
