@@ -1,0 +1,929 @@
+@name  Blender
+
+#grid data
+@persist [Scale CursorPos]:vector [Holoselected LastHoloseleted Wire_thickness Dis OnPlane]:number ZInd 
+@outputs [SnapPos LocalSnap]:vector
+
+#Egp data
+@inputs Egp:wirelink User:entity 
+@persist ButtonCooldown:number IsUsing:entity Scene_data:string ChangingHolo:table
+@persist [Orange Gray Hue BonesColor]:vector Buttons:table
+
+
+#mic data
+@persist E:entity [NOL LockUser CpuCap]:number Building_Mode:string
+
+#model Data
+@persist [Hololinecount Holopointpount  HoloBonecount]:number [ModelData HoloData Polygons]:table Spawn SpawnStep
+@persist [ShowPoints ShowEdges ShowFaces ShowBones]:number HoloCount StartH [O V VT F VN Links Bones Que]:table 
+
+#File Data
+@persist Compressed:table AddressPointers:table FileLoaded:array
+@persist Path:string SavingIndex IndexPoint LoadingIndex LoadPoint Version 
+@outputs 
+
+#[
+    FOOT NOTE:
+        the e2 was painstaking programmed by FoxMayham( STEAM_0:0:151994407 ) for the perpurse of making custom holo models
+        
+    DATA INFO:
+    
+        O object name
+        V vector
+        VT 
+        F face
+        VN vector normal
+    
+    KEYS:
+    
+        R : (interact button for placing point , edges , and faces )
+        Backspace : ( removes the point curser is at)
+        Alt : ( clear the que table for edges an faces )
+    
+    MODES/Buttons:
+        
+        Points : (create points at curser)
+        Move : (move point from place to place)
+        Links : (creates a edge between two points)
+        Faces : (creates a face between three points)
+        Bones : (broken function)
+        
+        New_File : (delete all data in tables)
+        X : (reset e2)
+        V : (show/hind vector points)
+        E : (show/hind edges)
+        F : (show/hind faces)
+        
+    SAVING AND LOADING: writing over a file will not write over data only add to it
+    
+        Saveing : ()
+        loading : ()
+    
+]#
+
+if( first() | dupefinished() )
+{
+    #include "Blender_Library"
+    
+    function number filesize(StringLenght){ return ceil(300*StringLenght/305000) }
+    
+    function void addHolo(HoloNum){ ChangingHolo:pushNumber(HoloNum) }
+    
+    function reset_model()
+    {
+        for(I=StartH,HoloCount){ holoDelete(I) }
+        HoloCount = StartH
+        HoloData=table( "Point"=table() , "Edge"=table() , "Face"=table() , "Bone"=table() )
+        SpawnStep=1
+    }
+    
+    function compression()
+    {
+        switch( SavingIndex )
+        {
+            default,break
+            case 1,
+                if( fileLoaded() == 0 && fileCanWrite() )
+                {
+                    fileWrite(">e2shared/[obj] "+Path+".txt", "# Blender "+Version+" OBJ File: "+Path+"\n# www.blender.org \n#mtllib "+Path+".mtl \no object_noname\n" )
+                    SavingIndex++
+                }
+                elseif( fileStatus() == _FILE_TIMEOUT )
+                {
+                    SavingIndex=0
+                    local Color = color_palette()
+                    Egp:egpColor( Buttons["Save_b",number] , Color["Gray",vector] )
+                    Egp:egpColor( Buttons["Load_b",number] , Color["Gray",vector] )
+                }
+            break
+            
+            case 2,
+                if( IndexPoint > V:count() )
+                { 
+                    IndexPoint=1 
+                    SavingIndex++ 
+                    break 
+                }
+                
+                Pos = V[IndexPoint,vector]
+                Compressed:pushString( "v "+Pos:x()+" "+Pos:y()+" "+Pos:z() )
+                AddressPointers[IndexPoint+"",string]=Compressed:count()+""
+                
+                IndexPoint++
+            break
+            
+            case 3,
+                if( IndexPoint > F:count() )
+                { 
+                    IndexPoint=1 
+                    SavingIndex++ 
+                    break 
+                }
+                elseif( F[IndexPoint, string] != "" )
+                {
+                    LFace=F[IndexPoint,string]:explode("/")
+                    Local_Array = array()
+                    
+                    for( I = 1 , 3 )
+                    {
+                        Local_Array[I,string]=AddressPointers[LFace[I,string],string]
+                    }
+                    
+                    Compressed:pushString( "f "+Local_Array[1,string]+"/"+Local_Array[2,string]+"/"+Local_Array[3,string] )
+                }
+                IndexPoint++
+            break
+            
+            case 4,
+                print( _HUD_PRINTCENTER, " Table " + IndexPoint )
+                if( fileCanWrite() ==1 )
+                {
+                    if( IndexPoint > Compressed:count() )
+                    { 
+                        IndexPoint=0 
+                        SavingIndex=0
+                        local Color = color_palette()
+                        Egp:egpColor( Buttons["Save_b",number] , Color["Gray",vector] )
+                        Egp:egpColor( Buttons["Load_b",number] , Color["Gray",vector] )
+                        break 
+                        }
+                    elseif( Compressed[IndexPoint,string] != "" )
+                    {
+                        fileAppend( ">e2shared/[obj] " + Path + ".txt", " "+Compressed[IndexPoint,string]+" \n"  )
+                    }
+                    IndexPoint++
+                }
+            break
+        }
+    }
+    
+    function loadfile()
+    {
+        switch( LoadingIndex )
+        {
+            
+            default,break
+            
+            case 1,
+                if( fileLoaded() == 1 )
+                {
+                    FileLoaded=fileRead():explode(" ")
+                    LoadingIndex++
+                    LoadPoint=1
+                }
+            break
+            
+            case 2,
+                
+                while( perf(50) )
+                {
+                    if( LoadPoint > FileLoaded:count() )
+                    {
+                        LoadPoint=1
+                        LoadingIndex++
+                        local Color = color_palette()
+                        Egp:egpColor( Buttons["Save_b",number] , Color["Gray",vector] )
+                        Egp:egpColor( Buttons["Load_b",number] , Color["Gray",vector] )
+                        break
+                    }
+                    else
+                    {
+                        print( _HUD_PRINTCENTER, " File " + LoadPoint + "___'"+FileLoaded[LoadPoint,string]+"'" )
+                        
+                        if( FileLoaded[LoadPoint,string] == "v"  )
+                        {
+                            V:pushVector( vec( FileLoaded[LoadPoint+1,string]:toNumber() , FileLoaded[LoadPoint+2,string]:toNumber() , FileLoaded[LoadPoint+3,string]:toNumber() ) )
+                            LoadPoint+=3
+                        }
+                        elseif( FileLoaded[LoadPoint,string] == "f" )
+                        {
+                            F:pushString( FileLoaded[LoadPoint+1,string] )
+                            LocalArray =  FileLoaded[LoadPoint+1,string]:explode("/")
+                            
+                            Links:pushString( LocalArray[1,string]+"/"+LocalArray[2,string] )
+                            Links:pushString( LocalArray[2,string]+"/"+LocalArray[3,string] )
+                            Links:pushString( LocalArray[3,string]+"/"+LocalArray[1,string] )
+                            
+                            LoadPoint+=1
+                        }
+                        else
+                        {
+                            LoadPoint++
+                        }
+                    }
+                }
+                
+            break
+            
+            case 3,
+                LoadingIndex=0
+                reset_model()
+            break
+            
+        }
+    }
+    
+    function table:createBone( BoneName:string , ParentBone:string , Pos:vector , Offset:vector , Ang:angle , Scale:vector2 )
+    {
+        if( ParentBone != "" )
+        {
+            if( Offset == vec(0) )
+            {
+                local P_Pos = This[ParentBone,table]["Pos",vector]
+                local P_Ang = This[ParentBone,table]["ang",angle]
+                local Lenght_1 = This[ParentBone,table]["Scale",vector2]:x()
+                
+                GAng = E:toWorld(Ang)
+                GPOS = E:toWorld(Pos)
+            }
+            else
+            {
+                GAng=toLocalAng( Pos , Ang , E:pos() , E:angles() )
+                GPOS=toLocal( Pos , Ang , E:pos() , E:angles()  )
+            }
+        }
+        else
+        {
+            GAng=toLocalAng( Pos , Ang , E:pos() , E:angles() )
+            GPOS=toLocal( Pos , Ang , E:pos() , E:angles()  )
+        }
+        This[This:count()+1,table] = table( "BoneName" = BoneName ,  "ParentName" = ParentBone , "Holos"  = array() , "Pos"=GPOS , "ang"=GAng , "Scale"=Scale )
+    }
+    
+    function number getcursor_i(){ return V:does_exist( SnapPos ) }
+    
+    function update_Cursor()
+    {
+        Intersection = linePlane(holoEntity(0),IsUsing)
+        IntersectionToWorld = holoEntity(0):toWorld(Intersection)
+        
+        if (abs(Intersection:x()) > holoScale(0):x()*6 || abs(Intersection:y()) > holoScale(0):y()*6 )
+        {
+            OnPlane=0
+        }
+        else
+        {
+            OnPlane=1
+            LocalSnap = round( E:toLocal( IntersectionToWorld )/Dis ) + vec( 0 , 0 , ZInd )
+            SnapPos = E:toWorld( LocalSnap*Dis )
+        }
+        
+        holoPos( 1 , SnapPos )
+        holoPos( 5 , SnapPos-vec(0,0,ZInd*Dis) )
+    }
+    
+    #mic data
+        E=entity()
+        Holo=1
+        Version=0.26
+        CpuCap=1000
+        Building_Mode="points"
+    
+    #3D Box
+        V=test_points()
+        Links=test_links()
+        HoloData=table( "Point"=table() , "Edge"=table() , "Face"=table() , "Bone"=table() )
+        F=test_faces()
+    
+    #Egp data
+        LockUser=0
+        ButtonCooldown=10
+        Holoselected=0
+        Scene_data="bones"
+        timer("update_colors",200)
+        
+    #Files
+        Path = "backup"
+        runOnFile(1)
+        IndexPoint=1
+        LoadPoint=1
+    
+    #Grid data
+        NOL=15 #how big the grid is (15 is best)
+        Dis=3 #don't change
+        Wire_thickness=0.01
+        Scale = vec(NOL*Dis,NOL*Dis,0) 
+        Hololinecount=0
+        Holopointpount=0
+        
+        ShowPoints = 1
+        ShowEdges = 1
+        ShowFaces = 1
+        ShowBones = 1
+    
+    #Colors
+        Black=vec(25)
+        Blue=vec(0,100,200)
+        Orange=vec(200,150,0)
+        Gray=vec(150)
+        ButtonGray=vec(30)
+        BonesColor=vec(255)
+    
+    #Changing color
+        Hue = vec( 0 , 1 , 0.8 )
+    
+    #----
+    #Egp-
+    #----
+    #egp clear
+        Egp:egpClear() Egp:egpScale(vec2(0,255),vec2(0,255))
+        
+    #Background
+        #[]#
+            Egp:egpBox(Holo , vec2(255/2,255/2) , vec2( 255 , 255 ) )
+            Egp:egpColor(Holo,Black)
+        #[]#
+            Holo+=1
+            addHolo(Holo)
+            Egp:egpBoxOutline(Holo , vec2(127.5,132.5) , vec2( 255 , 245.5 ) )
+            Egp:egpAlign(Holo,1,1)
+    #Logo
+            Holo+=1 Egp:egpCircle(Holo , vec2(10,5) , vec2(4,4) ) Egp:egpColor(Holo, Orange )
+            Holo+=1 Egp:egpCircle(Holo , vec2(10,5) , vec2(3,3) ) Egp:egpColor(Holo, Black )
+            Holo+=1 Egp:egpCircle(Holo , vec2(10,5) , vec2(2,2) ) Egp:egpColor(Holo, Blue )
+    
+    #lines
+        Lines = start_lines()
+        
+        for( A = 1 , Lines:count() )
+        {
+            Table = Lines[A,table]
+            Holo+=1 addHolo(Holo) 
+            Egp:egpLine(Holo , Table[1,vector2] , Table[2,vector2] )
+        }
+    
+    #Text
+        Text = start_buttontext()
+        
+        for( A = 1 , Text:count() )
+        {
+            Table = Text[A,table]
+            if( Table["B",string] != "" )
+            {
+                Holo+=1
+                Egp:egpBox(Holo , Table["P",vector2] , Table["S_",vector2] )
+                Egp:egpColor( Holo , Table["C",vector] )
+                Buttons[Table["B",string]+"_b",number]=Holo
+            }
+            Holo+=1 addHolo(Holo)
+            Egp:create_Text( Holo , Table["S",string],Table["P",vector2],Table["s",number]) 
+            Egp:egpAlign(Holo,1,1)
+            Buttons[Table["B",string]+"_t",number]=Holo
+        }
+        
+        Egp:egpSetText(Buttons["File_t",number],">e2shared/[obj] " + Path + ".txt")
+    
+    #-----
+    #GRID-
+    #-----
+    Spawn = 1
+    SpawnStep = 1
+    
+    if( Spawn == 1 )
+    {
+        #[0]# #Base
+            create_holo(0,"","",vec(0,0,-0.2),ang(180,0,0),vec(100),vec((Dis*0.167)*NOL,(Dis*0.167)*NOL,0.001),E,E)
+            holoAlpha(0,100)
+        #[1]# #curser
+            create_holo(1,"models/holograms/icosphere.mdl","",vec(0,0,-0.2),ang(180,0,0),vec(100),vec(0.1),E,E)
+            holoColor(1,Orange*0.8) holoAlpha(5,150)
+            holoDisableShading(1,1)
+        #[2]# #X
+            create_holo(2,"","",vec(0,0,0),ang(0,0,0),vec(0,170,0),vec((Dis*0.167)*NOL,0.015,0.015),E,E)
+            holoDisableShading(2,1)
+        #[3]# #Y
+            create_holo(3,"","",vec(0,0,0),ang(0,90,0),vec(170,0,0),vec((Dis*0.167)*NOL,0.015,0.015),E,E)
+            holoDisableShading(3,1)
+        #[1]# #curser2
+            create_holo(5,"models/holograms/plane.mdl","",vec(0,0,-0.2),ang(0,0,0),vec(100),vec(0.25),E,E)
+            holoColor(5,Orange) holoAlpha(5,100)
+            holoDisableShading(5,1)
+            
+        #Holos
+            for(I=0,NOL)
+            {
+                if(I==0|I==NOL)
+                {
+                    HoloCount+=1 create_holo(HoloCount+5,"","",vec((I*(Dis*2))-(NOL*Dis),0,0),ang(0,0,0),vec(255),vec(Wire_thickness,(Dis*0.167)*NOL,Wire_thickness),E,E)
+                }
+            }
+            for(I=0,NOL)
+            {
+                if(I==0|I==NOL)
+                {
+                    HoloCount+=1 create_holo(HoloCount+5,"","",vec(0,(I*(Dis*2))-(NOL*Dis),0),ang(0,0,0),vec(255),vec((Dis*0.167)*NOL,Wire_thickness,Wire_thickness),E,E)
+                }
+            }
+        
+        StartH = 100
+        HoloCount = StartH
+    }
+    
+    setName( "Blender "+Version ) #+ toChar(0)
+}
+interval(100)
+
+#
+# data stuff
+#
+
+if( SavingIndex != 0 )
+{
+    compression()
+}
+
+if( LoadingIndex != 0 )
+{
+    loadfile()
+}
+
+#
+# chat stuff
+#
+
+if ( chatClk() && IsUsing:isPlayer() && IsUsing == lastSpoke() )
+{
+    
+    local Lp = lastSpoke()
+    local Ls = lastSaid()
+    Said=Lp:lastSaid():explode(" ")
+    
+    switch (Said[1,string])
+    {
+        default, break
+        
+        case "path" , 
+        
+            Path = Said[2,string]
+            Egp:egpSetText( Buttons["File_t",number] ,">e2shared/ [obj] " + Path + ".txt")
+        
+        break
+        
+    }
+    
+}
+
+
+
+#
+# Egp stuff
+#
+
+
+if( ButtonCooldown==0 & IsUsing==User && !fileClk() )
+{
+    IsClk=0
+    
+    #reset
+    if( Egp:ispressed(Buttons["R_Reset_b",number],User) ){ reset() }
+    
+    if(Egp:ispressed(Buttons["Logout_b",number],User)&LockUser==1)
+    { 
+        IsClk=1
+        LockUser=0
+        IsUsing=E
+        runOnKeys(User,0)
+        runOnChat(0)
+        Egp:egpSetText(Buttons["Login_t",number],"User[E to enter yours]")
+    }
+    
+    if(Egp:ispressed(Buttons["Clear_b",number],User))
+    {
+        IsClk=1
+        V=table() Links=table() Bones=table() F=table()
+        reset_model()
+    }
+    
+    if( Egp:ispressed(Buttons["N_List_b",number],User) == 1)
+    {
+        Holoselected=0
+        
+        if(Scene_data=="bones"){ Scene_data="bones" }
+        
+        Egp:egpSetText(Buttons["N_List_t",number],"Collection [ "+Scene_data+" ]")
+        IsClk=1
+    }
+    
+    if( Egp:ispressed(Buttons["S_Verts_b",number],User) == 1 )
+    {
+        reset_model()
+        if( ShowPoints == 0 )
+        {
+            Egp:egpColor(Buttons["S_Verts_b",number],vec(50))
+            ShowPoints=1
+        }
+        elseif( ShowPoints == 1 )
+        {
+            Egp:egpColor(Buttons["S_Verts_b",number],vec(30))
+            ShowPoints=0
+        }
+        IsClk=1
+    }
+    if( Egp:ispressed(Buttons["S_Edges_b",number],User) == 1 )
+    {
+        reset_model()
+        if( ShowEdges == 0 )
+        {
+            Egp:egpColor(Buttons["S_Edges_b",number],vec(50))
+            ShowEdges=1
+        }
+        elseif( ShowEdges == 1 )
+        {
+            Egp:egpColor(Buttons["S_Edges_b",number],vec(30))
+            ShowEdges=0
+        }
+        IsClk=1
+    }
+    if( Egp:ispressed(Buttons["S_Faces_b",number],User) == 1 )
+    {
+        reset_model()
+        if( ShowFaces == 0 )
+        {
+            Egp:egpColor(Buttons["S_Faces_b",number],vec(50))
+            ShowFaces=1
+        }
+        elseif( ShowFaces == 1 )
+        {
+            Egp:egpColor(Buttons["S_Faces_b",number],vec(30))
+            ShowFaces=0
+        }
+        IsClk=1
+    }
+    
+    if( Egp:ispressed(Buttons["points_b",number],User) == 1 && Building_Mode != "points" )
+    {
+        Building_Mode="points"
+        IsClk=1 Mode = 1
+        if( ShowPoints == 0 ){ ShowPoints=1 reset_model() Egp:egpColor(Buttons["S_Verts_b",number],vec(50)) }
+    }
+    elseif( Egp:ispressed(Buttons["links_b",number],User) == 1 && Building_Mode != "links" )
+    {
+        Building_Mode="links"
+        IsClk=1 Mode = 1
+        if( ShowPoints == 0 ){ ShowPoints=1 reset_model() Egp:egpColor(Buttons["S_Verts_b",number],vec(50)) }
+    }
+    elseif( Egp:ispressed(Buttons["move_b",number],User) == 1 && Building_Mode != "Move" )
+    {
+        Building_Mode="Move"
+        IsClk=1 Mode = 1
+        if( ShowPoints == 0 ){ ShowPoints=1 reset_model() Egp:egpColor(Buttons["S_Verts_b",number],vec(50)) }
+    }
+    elseif( Egp:ispressed(Buttons["faces_b",number],User) == 1 && Building_Mode != "Faces" )
+    {
+        Building_Mode="Faces"
+        IsClk=1 Mode = 1
+        if( ShowPoints == 0 ){ ShowPoints=1 reset_model() Egp:egpColor(Buttons["S_Verts_b",number],vec(50)) }
+    }
+    elseif( Egp:ispressed(Buttons["bones_b",number],User) == 1 && Building_Mode != "Bones" )
+    {
+        Building_Mode="Bones"
+        IsClk=1 Mode = 1
+    }
+    else{ Mode = 0 }
+    
+    if( Mode == 1 )
+    {
+        local Color = color_palette()
+        
+        if( Building_Mode=="points" ){ Egp:egpColor( Buttons["points_b",number] , Color["Gray",vector] ) }else{ Egp:egpColor( Buttons["points_b",number] , Color["DGray",vector] ) }
+        if( Building_Mode=="links"  ){ Egp:egpColor( Buttons["links_b",number]  , Color["Gray",vector] ) }else{ Egp:egpColor( Buttons["links_b",number]  , Color["DGray",vector] ) }
+        if( Building_Mode=="Move"   ){ Egp:egpColor( Buttons["move_b",number]   , Color["Gray",vector] ) }else{ Egp:egpColor( Buttons["move_b",number]   , Color["DGray",vector] ) }
+        if( Building_Mode=="Faces"  ){ Egp:egpColor( Buttons["faces_b",number]  , Color["Gray",vector] ) }else{ Egp:egpColor( Buttons["faces_b",number]  , Color["DGray",vector] ) }
+        if( Building_Mode=="Bones"  ){ Egp:egpColor( Buttons["bones_b",number]  , Color["Gray",vector] ) }else{ Egp:egpColor( Buttons["bones_b",number]  , Color["DGray",vector] ) }
+    }
+    
+    if( Egp:ispressed(Buttons["Save_b",number],User) == 1 && SavingIndex == 0 && LoadingIndex == 0 )
+    {
+        fileLoad( ">e2shared/[obj] " + Path + ".txt" )
+        SavingIndex = 1
+        local Color = color_palette() 
+        Egp:egpColor( Buttons["Load_b",number] , Color["Red",vector] )
+        Egp:egpColor( Buttons["Save_b",number] , Color["Black",vector] )
+    }
+    if( Egp:ispressed(Buttons["Load_b",number],User) == 1 && LoadingIndex == 0 && SavingIndex == 0 )
+    {
+        
+        reset_model()
+        V=table() Links=table() Bones=table() F=table()
+        fileLoad( ">e2shared/[obj] " + Path + ".txt" )
+        local Color = color_palette()
+        Egp:egpColor( Buttons["Load_b",number] , Color["Black",vector] )
+        Egp:egpColor( Buttons["Save_b",number] , Color["Red",vector] )
+        LoadingIndex = 1
+    }
+    
+    if(IsClk==1)
+    {
+        E:soundPlay(100,0,"buttons/blip1.wav")
+        ButtonCooldown=5
+    }
+}
+elseif( Egp:ispressed(Buttons["Login_b",number],User) & LockUser == 0 )
+{
+    IsUsing=User
+    LockUser=1
+    runOnKeys(User,1)
+    runOnChat(1)
+    Egp:egpSetText(Buttons["Login_t",number],"User["+IsUsing:name():left(15)+"]")
+}
+elseif( ButtonCooldown>0 && clk() && !fileClk())
+{
+     ButtonCooldown-=1 
+}
+
+if( clk("update_colors") )
+{
+    Hue[1]=Hue[1]+1 if(Hue[1]>360){Hue[1]=0}
+    for(I=1,ChangingHolo:count()){ Egp:egpColor(ChangingHolo[I,number],hsv2rgb(Hue)) }
+    Egp:egpSetText(Buttons["Data_t",number], "By FoxMayham   Ops("+round(ops())+")    Cpu("+round(cpuUsage()*1000000)+")     Holos("+holoAmount()+"/"+holoMaxAmount()+")   Verts("+V:count()+")    Que("+Que:count()+")")
+    timer("update_colors",1000)
+}
+
+
+#
+# holo stuff
+#
+
+if( Spawn == 1 && holoCanCreate() == 1 && SpawnStep != 0 && holoRemainingSpawns() >=1 && clk() && !fileClk() )
+{
+    if( SpawnStep==1|SpawnStep==2|SpawnStep==3 | holoRemainingSpawns() >=3 && (SpawnStep==4) )
+    {
+        switch( SpawnStep )
+        {
+            default,break
+            
+            case 1,
+                if( HoloData["Point",table]:count() >= V:count() | ShowPoints==0 ){ SpawnStep++ break }
+                if( ShowPoints==1 )
+                {
+                    local I = HoloData["Point",table]:count()+1
+                    if(V[I,vector]!=vec())
+                    {
+                        HoloCount+=1
+                        create_holo(HoloCount,"","",V[I,vector]*Dis,ang(),vec(0,255,0),vec(0.04),E,E)
+                        HoloData["Point",table]:pushTable( table( "Holos"  = HoloCount , "Index"=I ) )
+                    }
+                    elseif( V[I,vector] == vec() )
+                    {
+                        HoloData["Point",table]:pushTable( table( "Nil" ) )
+                    }
+                }
+            break
+            
+            case 2,
+                if( HoloData["Edge",table]:count() >= Links:count() | ShowEdges==0 ){ SpawnStep++ break }
+                if( ShowEdges==1 )
+                {
+                    local I = HoloData["Edge",table]:count()+1
+                    SR=Links[I,string]:explode("/")
+                    if( SR:count() == 2 )
+                    {
+                        HoloCount+=1
+                        create_rope(HoloCount) holoParent(HoloCount,E)
+                        holoColor(HoloCount,vec(0,0,0))
+                        
+                        local V1=E:toWorld( (V[SR[1,string]:toNumber(),vector]*Dis) )
+                        local V2=E:toWorld( (V[SR[2,string]:toNumber(),vector]*Dis) )
+                        
+                        holo_rope(HoloCount,0.5,V1,V2,ang(90,0,0),Wire_thickness)
+                        
+                        HoloData["Edge",table]:pushTable( table( "Holos"  = HoloCount , "links"=Links[Hololinecount,string] ) )
+                    }
+                    elseif( Links[I,string] == "" )
+                    {
+                        HoloData["Edge",table]:pushTable( table( "Nil" ) )
+                    }
+                }
+            break
+            
+            case 3,
+                if( HoloData["Face",table]:count() >= F:count() | ShowFaces==0 ){ SpawnStep++ break }
+                local I = HoloData["Face",table]:count()+1
+                if( ShowFaces==1 )
+                {
+                    SR=F[I,string]:explode("/")
+                    if(SR:count() == 3)
+                    {
+                        Array=array()
+                        for( A = 1 , 3)
+                        {
+                            Array:pushVector( (V[SR[A,string]:toNumber() ,vector]*Dis) )
+                        }
+                        HoloCount+=1
+                        
+                        E:createPolygon(HoloCount,Polygons,Array)
+                        Polygons:update_Polygon(Polygons:count())
+                        Polygons:update_Polygon(Polygons:count())
+                        
+                        HoloData["Face",table]:pushTable( table( "Holos" = HoloCount , "Points"=F[I,string] ) )
+                    }
+                    elseif( F[I,string] == "" )
+                    {
+                        HoloData["Face",table]:pushTable( table( "Nil" ) )
+                    }
+                }
+            break
+            
+            case 4,
+                if( HoloData["Bone",table]:count() >= Bones:count() | ShowBones==0 ){ SpawnStep=0 break }
+                local I = HoloData["Bone",table]:count()+1
+                
+                HoloBonecount+=1
+                
+                LT=Bones[HoloBonecount,table]
+                
+                local Pos = LT["Pos",vector]
+                local Ang = LT["ang",angle]
+                local LSCALE = LT["Scale",vector2]
+                local Lenght = LSCALE:x()
+                local Weight = LSCALE:y()
+                
+                create_holo( HoloCount  ,"models/holograms/sphere3.mdl","",Pos,Ang,BonesColor,vec(0.15)*Weight,E,E)
+                
+                create_holo(HoloCount+1,"models/holograms/pyramid.mdl","",vec(7.5*Lenght,0,0),ang( 90,0,0),BonesColor,vec(0.15*Weight,0.15*Weight,0.8*Lenght),holoEntity(HoloCount),holoEntity(HoloCount))
+                create_holo(HoloCount+2,"models/holograms/pyramid.mdl","",vec(1.5*Lenght,0,0),ang(-90,0,0),BonesColor,vec(0.15*Weight,0.15*Weight,0.2*Lenght),holoEntity(HoloCount),holoEntity(HoloCount))
+                
+                HoloData["Bone",table]:pushTable( table( "Holos"  = array() ) )
+            break
+        }
+    }
+}
+
+
+#
+# edit stuff
+#
+
+
+if( changed(clk()) && !clk() && OnPlane == 1 && !fileClk() )
+{
+    String=keyClkPressed()
+	
+    if( String == "mouse_wheel_down" ){ZInd--}
+    if( String == "mouse_wheel_up" ){ZInd++}
+    
+    if( String == "backspace" && OnPlane == 1 )
+    {
+        Index = V:does_exist( LocalSnap )
+        
+        if( Index != 0 )
+        {
+            V[Index,vector] = vec()
+            
+            Remove = Links:find_exist(Index)
+            for( A = 1 , Remove:count() ){ Links[ Remove[A,number] , string ] = "" }
+            
+            Remove = F:find_exist(Index)
+            for( A = 1 , Remove:count() ){ F[ Remove[A,number] , string ] = "" }
+            
+            reset_model()
+        } 
+    }
+}
+
+
+if( clk() && IsUsing:isValid() && IsUsing:isPlayer() )
+{
+    switch( Building_Mode )
+    {
+        default,break
+        
+        case "points",
+            
+            update_Cursor()
+                        
+            local R=IsUsing:keyPressed("r")
+            
+            if(changed(R)&R==1&OnPlane==1 )
+            {
+                if( V:does_exist( LocalSnap ) == 0 )
+                {
+                    V[V:count()+1,vector]=LocalSnap
+                    SpawnStep=1
+                }
+            }
+        
+        break
+        
+        case "Move",
+            
+            update_Cursor()
+            
+            local R=IsUsing:keyPressed("r")
+            local C1=IsUsing:keyDuck()
+            
+            True = V:does_exist( LocalSnap )
+            
+            if( True != 0 )
+            {
+                holoColor(0, vec4(200,255,200,30))
+            }
+            else
+            {
+                holoColor(0, vec4(255,200,200,30))
+            }
+            
+            if( changed(R) & R==1 && True!=0 | changed(R) & R==1 & Que:count()==1 && True==0 )
+            {
+                E:soundPlay(100,0,"buttons/blip1.wav")
+                Que:pushNumber(True)
+                if(Que:count()==2)
+                {
+                    V[Que[1,number],vector]=LocalSnap
+                    Que:shift()
+                    Que:shift()
+                    reset_model()
+                }
+            }
+            
+            if(changed(C1)&C1==1){ Que=table() }
+            
+        break
+        
+        case "links",
+            
+            update_Cursor()
+            
+            local R=IsUsing:keyPressed("r")
+            local C1=IsUsing:keyDuck()
+            
+            True = V:does_exist( LocalSnap )
+            
+            if( True != 0 )
+            {
+                holoColor(0, vec4(200,255,200,30))
+            }
+            else
+            {
+                holoColor(0, vec4(255,200,200,30))
+            }
+            
+            if( changed(R) & R==1 && True!=0 )
+            {
+                E:soundPlay(100,0,"buttons/blip1.wav")
+                Que:pushNumber(True)
+                if(Que:count()==2)
+                {
+                    Links[Links:count()+1,string]=Que[1,number]+"/"+Que[2,number]
+                    Que:shift()
+                    Que:shift()
+                    SpawnStep=1
+                }
+            }
+            
+            if(changed(C1)&C1==1){ Que=table() }
+            
+        break
+        
+        case "Faces",
+            
+            update_Cursor()
+            
+            local R=IsUsing:keyPressed("r")
+            local C1=IsUsing:keyDuck()
+            
+            True = V:does_exist( LocalSnap )
+            
+            if( True != 0 )
+            {
+                holoColor(0, vec4(200,255,200,30))
+            }
+            else
+            {
+                holoColor(0, vec4(255,200,200,30))
+            }
+            
+            if( changed(R) & R==1 && True!=0 )
+            {
+                E:soundPlay(100,0,"buttons/blip1.wav")
+                Que:pushNumber(True)
+                if(Que:count()==3)
+                {
+                    F[F:count()+1,string]=Que[1,number]+"/"+Que[2,number]+"/"+Que[3,number]
+                    Que:clear()
+                    SpawnStep=1
+                }
+            }
+            
+            if(changed(C1)&C1==1){ Que=table() }
+            
+        break
+        
+        case "Bones",
+        
+            local Create=IsUsing:keyPressed("r")
+            
+            if( changed( Create ) && Create == 1)
+            {
+                Bones:createBone( "unnamed_Bone" , "", vec(0) , vec(0) , ang(0) , vec2(1) )
+                timer("update_holos",100)
+            }
+            
+        break
+    }
+}
+
+
+
+
+

@@ -1,0 +1,257 @@
+@name Blender_Library
+
+
+
+# # # # # # # #
+# MATH
+# # # # # # # #
+
+function ranger entity:ranger_shoot(Pos_offset:vector,Max_dis,Direction:angle)
+{ 
+    return rangerOffset(Max_dis,This:toWorld(Pos_offset),Direction:forward())
+}
+
+function angle vectormix(P_1:vector,P_2:vector)
+{
+     return ( P_1 - P_2 ):toAngle() 
+}
+
+# # # # # # # #
+# Data
+# # # # # # # #
+
+function number table:does_exist(Data:number)
+{
+    for( A = 1 , This:count()  )
+    {
+        if( This[A,number] == Data )
+        {
+            return A
+        }
+    }
+    return 0
+}
+function number table:does_exist(Data:vector)
+{
+    for( A = 1 , This:count()  )
+    {
+        if( This[A,vector] == Data )
+        {
+            return A
+        }
+    }
+    return 0
+}
+function number table:does_exist(Data:string)
+{
+    for( A = 1 , This:count()  )
+    {
+        if( This[A,string] == Data )
+        {
+            return A
+        }
+    }
+    return 0
+}
+
+function array table:find_exist(Locate:number)
+{
+    Indexes = array()
+    for( A = 1 , This:count()  )
+    {
+        IndexSegments=This[A,string]:explode("|")
+        for( A_1 = 1 , IndexSegments:count() )
+        {
+            if( IndexSegments[A_1,string]:toNumber() == Locate ){ Indexes:pushNumber(A) }
+        }
+        
+    }
+    return Indexes
+}
+
+
+
+
+# # # # # # # #
+# EGP
+# # # # # # # #
+
+function number wirelink:ispressed( Index , User:entity )
+{
+    HitPos = This:egpCursor( User )
+    return inrange( HitPos , This:egpPos(Index) - (This:egpSize(Index)/2)  , This:egpPos(Index) + (This:egpSize(Index)/2) )
+}
+
+function void wirelink:egpbox(Index:number,Pos:vector2,Size:vector2,Color:vector,Material:string)
+{           
+    This:egpBox(Index , Pos , Size ) 
+    This:egpColor(Index,Color)
+    This:egpMaterial(Index,Material)
+}
+
+function void wirelink:egpboxline(Index:number,Pos:vector2,Size:vector2,Color:vector,Material:string)
+{           
+    This:egpBoxOutline(Index , Pos , Size ) 
+    This:egpColor(Index,Color)
+    This:egpMaterial(Index,Material)
+}
+function void wirelink:egp_list(Pick,Holo,Size,Color:vector,OffSet:vector2,Table:table)
+{        
+    for(I = Pick , Pick+Table:count())
+    {
+        This:egpText(Holo+I, ""+Table[I,number] , vec2( 0 , I*(Size/1.5) )+OffSet )
+        This:egpFont(Holo+I, "roboto")
+        This:egpSize(Holo+I, Size)
+        This:egpColor(Holo+I,Color)
+    }
+}
+
+function void wirelink:create_Text(Index:number,Text:string,Pos:vector2,Size)
+{
+    This:egpText(Index, Text , Pos)
+    This:egpFont(Index, "roboto")
+    This:egpSize(Index, Size)
+}
+
+# # # # # # # #
+# HOLO
+# # # # # # # #
+
+function entity holoStyle(Index,Position:vector,Scale:vector,Angle:angle,Colour:vector,Model:string)
+{
+    holoPos(Index,Position)
+    holoScale(Index,Scale)
+    holoAng(Index,Angle)
+    holoColor(Index,Colour)
+    holoModel(Index,Model) 
+    return holoEntity(Index)   
+}
+function void create_holo(Holo_Num:number,Holo_Model:string,Holo_Material:string,Holo_Pos:vector,Holo_Ang:angle,Holo_Color:vector,Scale:vector,Body:entity,Parent_to:entity) 
+{
+    holoCreate(Holo_Num,Body:toWorld(Holo_Pos),Scale,Body:toWorld(Holo_Ang),Holo_Color)
+    holoModel(Holo_Num,Holo_Model)
+    holoMaterial(Holo_Num,Holo_Material)
+    holoShadow(Holo_Num,0)
+    holoParent(Holo_Num,Parent_to)
+}
+function void holo_rope(Holo:number,Ratio,Pos1:vector,Pos2:vector,AngleOffSet:angle,Weight:number)
+{
+    holoPos( Holo , mix( Pos1 , Pos2 , Ratio ) )
+    holoAng( Holo , ( Pos1 - Pos2 ):toAngle()+AngleOffSet )
+    holoScale( Holo , vec( Weight , Weight , (Pos1:distance( Pos2 ) )/(6/Ratio)) )
+}
+
+function void create_rope(Index:number)
+{
+    holoCreate(Index)
+    holoModel(Index,"")
+    holoScale(Index,vec(0))
+}
+function vector linePlane( Ent:entity, Ply:entity )
+{
+    local Normal = Ent:up()
+    return Ent:toLocal( Ply:shootPos() + ( Normal:dot( Ent:pos() - Ply:shootPos() ) / Normal:dot( Ply:eye() ) ) * Ply:eye() )
+}
+
+function entity:createPolygon(H,Polygons:table,Points:array)
+{
+    if( Points:count() == 3 )
+    {
+        create_holo(H,"","models/debug/debugwhite",vec(0,0,0),ang(0,0,0),vec(200),vec(-1),This,This)
+        Polygons:pushTable( table( "Index"=Polygons:count()+1 , "parent"=This ,  "Holo"=H , "Points"=Points ) )
+    }
+}
+
+    
+function table:update_Polygon(Index)
+{
+    local PolyT = This[Index,table]
+    PointArray = PolyT["Points",array]
+    Parent = PolyT["parent",entity]
+    
+    V1 = Parent:toWorld(PointArray[1,vector])
+    V2 = Parent:toWorld(PointArray[2,vector])
+    V3 = Parent:toWorld(PointArray[3,vector])
+    
+    local V = (V1+V2+V3)/3
+    local HoloIndex = PolyT["Holo",number] 
+    local HE = holoEntity(HoloIndex)
+    local Up = holoEntity(HoloIndex):forward()
+    local Size = max(V1:distance(V2),V1:distance(V3),V2:distance(V3))*1.5
+    
+    holoAng(HoloIndex,(V2-V1):cross(V3-V1):toAngle())
+    holoScaleUnits(HoloIndex,vec(0.01,Size,Size))
+    holoPos(HoloIndex,toWorld(-HE:boxCenter()*holoScale(HoloIndex),ang(),V,HE:angles()))
+    
+    holoClip(HoloIndex,1,(V1+V2)/2,(V1-V2):cross(Up),1) holoClipEnabled(HoloIndex,1,1)
+    holoClip(HoloIndex,2,(V1+V3)/2,(V3-V1):cross(Up),1) holoClipEnabled(HoloIndex,2,1)
+    holoClip(HoloIndex,3,(V2+V3)/2,(V2-V3):cross(Up),1) holoClipEnabled(HoloIndex,3,1)
+}
+
+# # # # # # # #
+# DATA
+# # # # # # # #
+
+function table test_points(){ return table(vec(1,1,1),vec(1,-1,1),vec(-1,1,1),vec(-1,-1,1),vec(1,1,3),vec(1,-1,3),vec(-1,1,3),vec(-1,-1,3)) }
+function table test_links(){ return table("1/2","1/3","1/6","1/5","1/4","2/8","3/4","3/7","3/5","4/7","2/4","5/6","5/7","6/2","6/8","6/7","8/4","8/7","8/6") }
+function table test_faces(){ return table( "1/2/6" , "5/1/3" , "7/3/4" , "4/2/8" , "1/4/2" , "4/3/1" , "2/4/8" ) }
+function table color_palette()
+{
+    return table(
+     "Black"=vec(25)
+    ,"Blue"=vec(0,100,200)
+    ,"Orange"=vec(200,150,0)
+    ,"Red"=vec(100,0,0)
+    ,"Gray"=vec(50)
+    ,"DGray"=vec(35)
+    ,"ButtonGray"=vec(30)
+    ,"BonesColor"=vec(255)
+    )
+}
+function table start_buttontext()
+{
+    local Color = color_palette()
+    return table(
+     table( "B"="T" , "S"="Blender 0.26" , "P"=vec2(45,6) , "s"=20 )
+    ,table( "B"="Data" , "S"="By FoxMayham" , "P"=vec2(255/2,251) , "s"=15 )
+    ,table( "B"="File" , "S"="File Path" , "P"=vec2(255/2,243) , "s"=15 )
+    ,table( "B"="R_Reset" , "S"="X"                      , "s"=15 , "P"=vec2(249,5.7) , "S_"=vec2( 9 , 9 ) , "C"=Color["Gray",vector] )
+    ,table( "B"="Login"   , "S"="User[E to enter yours]" , "s"=15 , "P"=vec2(172,5.7) , "S_"=vec2( 63 , 9 ) , "C"=Color["Gray",vector] )
+    ,table( "B"="Logout"  , "S"="[ U ]"                  , "s"=15 , "P"=vec2(213,5.7) , "S_"=vec2( 12 , 9 ) , "C"=Color["Gray",vector] )
+    ,table( "B"="Clear"   , "S"="New File"               , "s"=15 , "P"=vec2(14,14.4) , "S_"=vec2( 26 , 7 ) , "C"=Color["Gray",vector] )
+    ,table( "B"="E" , "S"="Edit"    , "s"=15 , "P"=vec2(37,14.4) , "S_"=vec2(15,7) , "C"=Color["Gray",vector] )
+    ,table( "B"="R" , "S"="Render"  , "s"=15 , "P"=vec2(58,14.4) , "S_"=vec2(24,7) , "C"=Color["Gray",vector] )
+    ,table( "B"="W" , "S"="Window"  , "s"=15 , "P"=vec2(84,14.4) , "S_"=vec2(24,7) , "C"=Color["Gray",vector] )
+    ,table( "B"="H" , "S"="Help"    , "s"=15 , "P"=vec2(107,14.4) , "S_"=vec2(18,7) , "C"=Color["Gray",vector] )
+    ,table( "B"="Save" , "S"="FileSave"  , "s"=15 , "P"=vec2(180,14.4) , "S_"=vec2( 30 , 7 ) , "C"=Color["Gray",vector] )
+    ,table( "B"="Load" , "S"="FileLoad"  , "s"=15 , "P"=vec2(212,14.4) , "S_"=vec2( 30 , 7 ) , "C"=Color["Gray",vector] )
+    ,table( "B"="S_Verts" , "S"="[ V ]"    , "s"=15 , "P"=vec2( 7,38) , "S_"=vec2( 12 , 12 ) , "C"=Color["Gray",vector] )
+    ,table( "B"="S_Edges" , "S"="[ E ]"    , "s"=15 , "P"=vec2(21,38) , "S_"=vec2( 12 , 12 ) , "C"=Color["Gray",vector] )
+    ,table( "B"="S_Faces" , "S"="[ F ]"    , "s"=15 , "P"=vec2(35,38) , "S_"=vec2( 12 , 12 ) , "C"=Color["Gray",vector] )
+    ,table( "B"="points" , "S"="[points]" , "s"=15 , "P"=vec2( 13,25) , "S_"=vec2( 24 , 12 ) , "C"=Color["Gray",vector] )
+    ,table( "B"="move"   , "S"="[Move]"   , "s"=15 , "P"=vec2( 38,25) , "S_"=vec2( 24 , 12 ) , "C"=Color["DGray",vector] )
+    ,table( "B"="links"  , "S"="[links]"  , "s"=15 , "P"=vec2( 63,25) , "S_"=vec2( 24 , 12 ) , "C"=Color["DGray",vector] )
+    ,table( "B"="faces"  , "S"="[Faces]"  , "s"=15 , "P"=vec2( 88,25) , "S_"=vec2( 24 , 12 ) , "C"=Color["DGray",vector] )
+    ,table( "B"="bones"  , "S"="[Bones]"  , "s"=15 , "P"=vec2(113,25) , "S_"=vec2( 24 , 12 ) , "C"=Color["DGray",vector] )
+
+    )
+}
+function table start_lines()
+{
+    return table(
+     table( vec2(0,18) , vec2(255,18) )
+    ,table( vec2(185,18) , vec2(185,247) )
+    ,table( vec2(185,255/2) , vec2(255,255/2) )
+    ,table( vec2(193,140) , vec2(193,247) )
+    ,table( vec2(0,247) , vec2(255,247) )
+    ,table( vec2(185,140) , vec2(255,140) )
+    ,table( vec2(185,27) , vec2(255,27) )
+    )
+}
+
+
+
+
+
+
+
