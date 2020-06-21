@@ -1,0 +1,228 @@
+@name Neural Network
+#data inputs
+@inputs  [InP1,InP2,InP3,InP4,InP5,InP6,InP7,InP8,InP9,InP10]:number DataInputs:array EGP_WIRE:wirelink
+#data ootpouts
+@outputs [InO1,InO2,InO3,InP4,InO5,InO6,InO7,InO8,InO9,InO10]:number DataOutputs:array 
+
+@persist  E:entity H_Count CanUpdate Out
+#node data
+@persist [Nodes NetworkArrangement Network_Archives]:table TotalNodes UpdateID LookID LiveTick1 LiveTick2 FPS [Time1,Time2]:array NFPS
+
+@trigger none
+if( first() | duped() )
+{
+    UpdateID = 1
+    LookID = 1
+    H_Count=3
+    
+    function number sigmoid_curve(L,K,X,Mid){ return L/(1+(e()^-K)*(X-Mid)) }
+    function vector2 xyPosition_L(Pos:vector2,MaxY){ return vec2( Pos:x()*2.5 , MaxY-Pos:y()*1.5 )*24+vec2(-30,0) }
+    
+    function create_hexgon(Holo_Num:number,Holo_Material:string,Offset:vector2,Holo_Color:vector,Scale:number)
+    {
+        R = array( vec2(0,1.5)*Scale+Offset , vec2(1,0.7)*Scale+Offset  , vec2(1,-0.7)*Scale+Offset , vec2(0,-1.5)*Scale+Offset , vec2(-1,-0.7)*Scale+Offset , vec2(-1,0.7)*Scale+Offset )
+        
+        EGP_WIRE:egpPoly(Holo_Num,R)
+        EGP_WIRE:egpColor(Holo_Num,Holo_Color)
+        EGP_WIRE:egpMaterial(Holo_Num,Holo_Material)
+    }
+    function create_hexgon_line(Holo_Num:number,Holo_Material:string,Offset:vector2,Holo_Color:vector,Scale:number)
+    {
+        R = array( vec2(0,1.2)*Scale+Offset , vec2(1,0.75)*Scale+Offset  , vec2(1,-0.75)*Scale+Offset , vec2(0,-1.2)*Scale+Offset , vec2(-1,-0.75)*Scale+Offset , vec2(-1,0.75)*Scale+Offset )
+        
+        EGP_WIRE:egpPolyOutline(Holo_Num,R)
+        EGP_WIRE:egpColor(Holo_Num,Holo_Color)
+        EGP_WIRE:egpMaterial(Holo_Num,Holo_Material)
+    }
+    function create_line( Holo_Num:number , P1:vector2 , P2:vector2 ,Holo_Color:vector )
+    {
+        EGP_WIRE:egpLine(Holo_Num,P1,P2)
+        EGP_WIRE:egpColor(Holo_Num,Holo_Color)
+    }
+    function void create_Text(Holo_Num:number,Text:string,Pos:vector2,Size)
+    {
+        EGP_WIRE:egpText(Holo_Num, Text , Pos)
+        EGP_WIRE:egpFont(Holo_Num, "roboto")
+        EGP_WIRE:egpSize(Holo_Num, Size)
+    }
+    
+    function createnetwork()
+    {
+        TotalNodes=1
+        LayerCount = NetworkArrangement:count()
+        
+        for( IndexA = 1 , LayerCount )
+        {
+            LayerNodeCount = NetworkArrangement[IndexA,number]
+            
+            for( IndexB = 1 , LayerNodeCount )
+            {
+                Nodes[TotalNodes,table] = table( "Index"=TotalNodes , "Base"=0 , "Light"=0 , "Bias"=-random(2,5) , "Pos"=vec2(IndexA,IndexB) )
+                
+                TotalNodes++
+            }
+        }
+    }
+    
+    function table:createHoloNode()
+    {
+        LayerNodeCount = NetworkArrangement[ This["Pos",vector2]:x() , number]
+        
+        PA = This["Pos",vector2]:x()
+        PB = This["Pos",vector2]:y()
+        
+        create_hexgon(H_Count,"",vec2(0,250)+xyPosition_L(vec2(PA,PB),LayerNodeCount),vec(100),10.2)
+        local B1 = H_Count H_Count++
+        
+        create_hexgon(H_Count,"",vec2(0,250)+xyPosition_L(vec2(PA,PB),LayerNodeCount),vec(255),8.9)
+        local B2 = H_Count H_Count++
+        
+        This["Base",number] = B1
+        This["Light",number] = B2
+    }
+    
+    function network_scale(Scale:array)
+    {
+        for( Index = 1 , Scale:count() )
+        {
+            if( Scale[Index,number] != 0 )
+            {
+                NetworkArrangement[Index,number]=Scale[Index,number]
+            }
+            else
+            {
+                NetworkArrangement[Index,number]=Scale[Index,number]+1
+            }
+        }
+    }
+    
+    E=entity()
+    
+    create_hexgon_line(0,"",vec2(),vec(255),2.1)
+    
+    #egp clear
+    EGP_WIRE:egpClear()
+    EGP_WIRE:egpScale(vec2(0,512),vec2(0,512))
+    
+    network_scale( array( 6 , 4 , 3 , 3 , 4 , 3 ) )
+    createnetwork()
+    timer("start",1000)
+    
+    DataInputs = array(InP1,InP2,InP3,InP4,InP5,InP6,InP7,InP8,InP9,InP10)
+    
+    timer("FPS",1000)
+    timer("NFPS",15000)
+}
+if( clk("FPS") ){ Time1:pushNumber(LiveTick1) LiveTick1=0   FPS=round(  Time1:average())    timer( "FPS", 1000) }
+if( clk("NFPS")){ Time2:pushNumber(LiveTick2) LiveTick2=0  NFPS=round(Time2:average()*4) timer("NFPS",15000) }
+
+#################
+#update Zone
+#################
+
+interval( tickInterval() * FPS )
+setName("Neural Network ")
+create_Text(0,"Neurwork [ CPU:"+round(cpuUsage()*1000000)+" FPS:"+FPS+" NetFPM:"+NFPS+" ]",vec2(20,20),30)
+
+if( clk("start") ){ CanUpdate = 1 }
+
+#################
+#Node update Zone
+#################
+
+if( CanUpdate == 1 && round(cpuUsage()*1000000) < 1000 )
+{
+    #next node update
+        LookID+=1
+        LiveTick1+=1
+        
+        if( LookID>=UpdateID | Nodes[LookID,table]["Pos",vector2]:x() == 5 ){ LookID=1 UpdateID+=1  }
+        if( UpdateID>TotalNodes ){ UpdateID=1 LiveTick2+=1 }
+    
+    #get current node update
+        CurT = Nodes[UpdateID,table]
+        Curt_X = CurT["Pos",vector2]:x()
+    
+    #create node holos
+        if( CurT["Light",number] == 0 ){ CurT:createHoloNode() }
+    
+    #update look node
+        while( Nodes[LookID,table]["Pos",vector2]:x() != Curt_X-1 && LookID<UpdateID && Curt_X != 1){ LookID+=1 }
+        if( Nodes[LookID,table]["Pos",vector2]:x() != Curt_X ){ Out=0 }
+        
+        Look_X = Nodes[LookID,table]["Pos",vector2]:x()
+        LookT = Nodes[LookID,table]
+    
+    if( Curt_X != 1 )
+    {
+        #Node mid / end node
+        
+        Weight = CurT[ "W_("+LookID+"|"+UpdateID+")",number]
+        if( Weight == 0 )
+        {
+            P1x = NetworkArrangement[LookT["Pos",vector2]:x(),number]
+            P2x = NetworkArrangement[CurT["Pos",vector2]:x() ,number]
+            create_line( H_Count , vec2(0,250)+xyPosition_L(LookT["Pos",vector2],P1x) , vec2(5,250)+xyPosition_L(CurT["Pos",vector2],P2x) ,vec(255) )
+            
+            CurT[ "L_("+LookID+"|"+UpdateID+")",number]=H_Count H_Count++
+            CurT[ "W_("+LookID+"|"+UpdateID+")",number]=random(1,-1) 
+        }
+        
+        Out+=(LookT["Out",number]*Weight)
+        
+        CurT[ "W_("+LookID+"|"+UpdateID+")",number]=Weight+random(0.1,-0.1)
+        
+        Temp = clamp( sigmoid_curve( 1 , 1 , Out+CurT["Bias",number] , 0 ) , -255 , 255 )
+        
+        EGP_WIRE:egpColor( CurT[ "L_("+LookID+"|"+UpdateID+")",number] , hsv2rgb( vec( Temp  , 255 , 255 ) ) )
+        EGP_WIRE:egpOrderBelow( CurT[ "L_("+LookID+"|"+UpdateID+")",number] , 3)
+        
+        CurT["Out",number] = Temp
+    }
+    elseif( Curt_X == 1 )
+    {
+        #update inputs
+        
+        DataInputs = array(InP1,InP2,InP3,InP4,InP5,InP6,InP7,InP8,InP9,InP10)
+        
+        CurT["Out",number] = DataInputs[UpdateID,number] #random(1,30)
+    }
+    if( Curt_X == NetworkArrangement:count() )
+    {
+        #update outputs
+        
+        switch( CurT["Pos",vector2]:y() )
+        {
+            default,break
+            
+            case  1 , InO1  = CurT["Out",number] break
+            case  2 , InO2  = CurT["Out",number] break
+            case  3 , InO3  = CurT["Out",number] break
+            case  4 , InO4  = CurT["Out",number] break
+            case  5 , InO5  = CurT["Out",number] break
+            case  6 , InO6  = CurT["Out",number] break
+            case  7 , InO7  = CurT["Out",number] break
+            case  8 , InO8  = CurT["Out",number] break
+            case  9 , InO9  = CurT["Out",number] break
+            case 10 , InO10 = CurT["Out",number] break
+        }
+    }
+    
+    if( CurT["Out",number]>0 ){ Color_Vec = hsv2rgb( vec( CurT["Out",number]  , 255 , 255 ) )  }else{ Color_Vec = hsv2rgb( vec( abs(CurT["Out",number]) , 0 , 0.1 ) ) }
+    EGP_WIRE:egpColor( CurT["Light",number] , Color_Vec )
+    
+    Current = CurT["Out",number]
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
