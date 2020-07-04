@@ -1,0 +1,83 @@
+@name Bones IK
+@inputs 
+@outputs 
+@persist Bones:table
+@trigger
+
+if( first() )
+{
+    function number getboneholo(Bonename:string){ return Bones[Bonename,table]["Holos",array][1,number] }
+    function number getLength( X1 , X2 ){ return holoEntity(X1):pos():distance(holoEntity(X2):pos()) }
+    function number getLength( X1 , X2:vector ){ return holoEntity(X1):pos():distance(X2) }
+    
+    function ik_walk( B1:string, B2:string, Base:entity, IK:vector )
+    {
+        #--
+            local A=getboneholo(B1)
+            local B=getboneholo(B2)
+            
+            local BoneA = holoEntity(A)
+            local BoneB = holoEntity(B)
+            
+            local L_BtoC = getLength( A , B )
+            
+        #-- A
+            local Dir = Base:toLocalAxis(IK - BoneA:pos())
+            local Dis = 1 - min(1, Dir:length() / (L_BtoC) - 0.5)
+            local Ang = quat(Dir:toAngle():setRoll(-bearing(BoneA:pos(), Base:angles(), IK))) * qRotation(vec(0,  30+Dis*48, 0))
+            
+            holoAng( A , Base:toWorld( Ang:toAngle() ) )
+            
+        #-- B
+            local Dir = Base:toLocalAxis(IK - BoneA:pos())
+            local Dis = 1 - min(1, Dir:length() / (L_BtoC) - 0.5)
+            local Ang = quat(Dir:toAngle():setRoll(-bearing(BoneA:pos(), Base:angles(), IK))) * qRotation(vec(0, -30-Dis*48, 0))
+            
+            holoAng( B , Base:toWorld( Ang:toAngle() ) )
+            
+    }
+    
+    function ik_crane( B1:string, B2:string, B3:string, B4:string, Base:entity, IK:vector )
+    {
+        #--
+            local A=getboneholo(B1)
+            local B=getboneholo(B2)
+            local C=getboneholo(B3)
+            local D=getboneholo(B4)
+            
+            local BoneA = holoEntity(A)
+            local BoneB = holoEntity(B)
+            local BoneC = holoEntity(C)
+            local BoneD = holoEntity(D)
+            
+            local L_AtoB = getLength( A , B )
+            local L_BtoC = getLength( B , C )
+            local L_CtoD = getLength( B , IK )
+        
+        #-- D
+            local Dir = Base:toLocalAxis(IK - BoneA:pos())
+            local Dis = 1 - min(1, Dir:length() / (L_AtoB + L_BtoC ) - 0.5)
+            local Ang = ( quat( Dir:toAngle() ) * qRotation( vec( 0, -Dis*90, 0 ) ) ):toAngle()
+            
+            holoAng(D, Base:toWorld( ang(-90,Ang:yaw(),0) ) )
+        #-- A 
+            local Dir = BoneD:toLocalAxis(IK - BoneA:pos())
+            local Dis = 1 - min(1, Dir:length() / (L_AtoB + L_BtoC ) - 0.5)
+            local Ang = ( quat( Dir:toAngle() ) * qRotation( vec( 0, -Dis*90, 0 ) ) ):toAngle()
+            
+            holoAng(A, BoneD:toWorld( Ang+ang(0,-Ang:yaw(),0) ) )
+
+        #-- C
+            local Dir = BoneA:toLocalAxis(IK - BoneB:pos())
+            local Dis = 1 - min(1, Dir:length() / (L_BtoC ) - 0.5)
+            
+            holoAng(B, BoneA:toWorld(ang(atan(Dir:x(), Dir:z()) - 90 + Dis*60, 0, 0)))
+            
+        #-- D
+            local Dir = BoneB:toLocalAxis(IK - BoneC:pos())
+            local Dis = min(Dir:length(), L_BtoC )
+            
+            holoAng(C, BoneB:toWorld( ang( atan(Dir:x(), Dir:z()) - 90 , 0, 0) ) )
+    }
+    
+}
