@@ -1,0 +1,78 @@
+@name Door controller
+@inputs [Chassis Prop1 ]:entity Button1
+@outputs 
+@persist PivoteData:table
+@trigger none
+if( first() | dupefinished() )
+{
+    runOnLast(1)
+    
+    #holo to use ( Index , ang multiplier , max ang , pivot prop , offset pos , offset ang , pivot direction  )
+    function void entity:holocreate_pivot(I,MultPly,MaxAng,Gate:entity,Offset:vector,OffsetAng:angle,Normal:vector)
+    {
+        holoCreate(I) holoAng(I,Gate:toWorld(ang()))  holoPos(I,Gate:toWorld(Offset)) holoScale(I,vec(0.5,0.5,1))
+        holoParent(I,This) Gate:parentTo(holoEntity(I))
+        holoModel(I,"models/holograms/hexagon.mdl") holoMaterial(I,"models/wireframe")
+        PivoteData[I:toString(),table] = table( "I"=I , "OO"=0 , "MaxAng"=MaxAng , "Ang"=0 , "MultPly"=MultPly , "OffsetAng"=OffsetAng , "Normal"=Normal , "Parent"=Gate )
+    }
+    
+    #holo to use ( index , toggle )
+    function void updaterotate_ang(I,Input)
+    {
+        local LocalTable = PivoteData[I:toString(),table]
+        if( changed( Input )& Input ){LocalTable["OO",number]=!LocalTable["OO",number]}
+        local Ang = LocalTable["Ang",number]
+        LocalTable["Ang",number] = LocalTable["OO",number]==1 ? min(Ang+LocalTable["MultPly",number],LocalTable["MaxAng",number])  : max(Ang-LocalTable["MultPly",number],0)
+    }
+    
+    #holo to use ( index )
+    function void entity:rotateholo(I)
+    {
+        local LocalTable = PivoteData[I:toString(),table]
+        local Dir = This:toLocalAxis( This:toWorld(LocalTable["Normal",vector]) - This:pos() )
+        local Ang = ( quat( Dir:toAngle()+LocalTable["OffsetAng",angle] ) * qRotation( vec( 0, LocalTable["Ang",number] , 0 ) ) ):toAngle()
+        holoAng( I , This:toWorld( Ang+ang(0,90,90) ) )
+        LocalTable["Parent",entity]:setAng( holoEntity(I):angles() )
+    }
+    
+    #holo to use ( Index , ang multiplier , max ang , pivot prop , offset pos , offset ang , pivot direction  )
+    Chassis:holocreate_pivot( 1 , 5 , 60 , Prop1 , vec() , ang(0,0,0) , vec(0,0,0) )
+    
+}
+if( last() )
+{
+    foreach(String,Table:table=PivoteData)
+    {
+        holoUnparent(Table["I",number])
+        Table["Parent",entity]:deparent()
+    }
+}
+
+interval(100)
+
+#holo to use ( index , toggle )
+updaterotate_ang(1,Button1)
+
+#holo to use ( index )
+Chassis:rotateholo(1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
